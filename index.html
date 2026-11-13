@@ -244,6 +244,7 @@
     <a class="btn wa" id="nextBtn" href="#" target="_blank" rel="noopener" style="width:100%;justify-content:center;font-size:17px;padding:14px;margin-bottom:6px">📨 Envoyer au suivant</a>
     <a class="btn ghost small" id="nextSms" href="#" style="width:100%;justify-content:center;margin-bottom:6px">✉️ Pas de WhatsApp ? Envoyer par SMS</a>
     <p class="hint" id="nextInfo" style="text-align:center;margin:0 0 12px"></p>
+    <div style="margin:0 0 8px"><button class="btn ghost small" id="seenTest">🔧 Tester le suivi des liens ouverts</button><div id="seenTestMsg" style="font-size:13px;margin-top:6px;white-space:pre-line"></div></div>
     <p class="hint hidden" id="seenErr" style="color:var(--red-d)">⚠️ Le serveur de suivi des liens ouverts ne répond pas : l'information « a ouvert son lien » ne peut pas être mise à jour.</p>
     <div id="sendList"></div>
     <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
@@ -766,6 +767,25 @@
     seenBusy = false;
   }
   setInterval(refreshSeen, 30000);
+  $("seenTest").onclick = async ()=>{
+    const out = $("seenTestMsg"), id = "test" + newVid().slice(0,10), lines = [];
+    const show = ()=> out.textContent = lines.join("\n");
+    lines.push("Test en cours…"); show(); lines.length = 0;
+    try{
+      const r = await fetch(API + "/vu", {method:"POST", headers:{"Content-Type":"text/plain"}, body:JSON.stringify({id})});
+      const t = await r.text();
+      lines.push((r.ok ? "✅" : "❌") + " 1. Enregistrement d'une ouverture : réponse " + r.status + " " + t.slice(0,150));
+    }catch(e){ lines.push("❌ 1. Enregistrement d'une ouverture : " + e.message + " (serveur injoignable ou réponse bloquée par le navigateur)"); }
+    show();
+    try{
+      const r = await fetch(API + "/vus?ids=" + id, {cache:"no-store"});
+      const t = await r.text();
+      const okRead = r.ok && t.includes(id);
+      lines.push((okRead ? "✅" : "❌") + " 2. Lecture des ouvertures : réponse " + r.status + " " + t.slice(0,150));
+    }catch(e){ lines.push("❌ 2. Lecture des ouvertures : " + e.message + " (serveur injoignable ou réponse bloquée par le navigateur)"); }
+    lines.push("Page : " + location.origin + " · Version " + (document.querySelector(".appVersion")||{}).textContent);
+    show();
+  };
   document.addEventListener("visibilitychange", refreshSeen);
   function bindRow(row, t, msg){
       const cb = row.querySelector(".cs");
@@ -956,7 +976,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.14"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.15"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
