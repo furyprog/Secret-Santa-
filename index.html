@@ -340,6 +340,8 @@
       <p>Sous le nom découvert, tu vois les cadeaux souhaités par la personne à qui tu offres, avec un lien 🛒 vers la boutique quand elle en a mis un. La liste se met à jour toute seule.</p>
       <h3>🎁 J'ai reçu mon cadeau</h3>
       <p>Quand tu as reçu ton cadeau, rouvre ton lien et coche <b>J'ai reçu mon cadeau</b>&nbsp;: l'organisateur saura qu'il a bien été offert.</p>
+      <h3>⏳ Compte à rebours</h3>
+      <p>Si une date de remise a été indiquée, un compte à rebours s'affiche sous la date. Pour une période (du … au …), il compte jusqu'au premier jour, puis indique que la remise est en cours jusqu'au dernier jour.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -366,6 +368,7 @@
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
+    <p id="countLine" class="hidden" style="font-size:18px;font-weight:700;color:#ffe7a8;margin-top:0"></p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
     <div id="gotBox" class="wishBox hidden" style="margin-top:26px">
       <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600;font-size:17px;color:#ffe7a8;margin:0"><input type="checkbox" id="gotChk" style="width:22px;height:22px;flex:none"> 🎁 J'ai reçu mon cadeau</label>
@@ -555,8 +558,27 @@
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
       if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
-      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); }
+      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); countdown(d.when); }
       wishes(); };
+    const countdown = when => { // compte à rebours lu dans le texte de la date (« le … » ou « du … au … »)
+      const M = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+      const ds = [...when.matchAll(/(\d{1,2}) (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre) (\d{4})/g)].map(m => new Date(+m[3], M.indexOf(m[2]), +m[1]));
+      if(!ds.length) return;
+      const start = ds[0], end = new Date(ds[ds.length-1].getTime()); end.setDate(end.getDate() + 1); // fin = minuit après le dernier jour
+      const el = $("countLine"), two = n => String(n).padStart(2,"0");
+      const tick = ()=>{
+        const now = new Date();
+        if(now >= end){ el.classList.add("hidden"); clearInterval(timer); return; }
+        if(now >= start){
+          el.textContent = ds.length > 1 && now < new Date(end.getTime() - 864e5) ? "🎁 Remise des cadeaux en cours jusqu'au " + when.replace(/^.* au /, "") + " !" : "🎁 C'est aujourd'hui la remise des cadeaux !";
+        } else {
+          let r = Math.floor((start - now) / 1000); const j = Math.floor(r / 86400); r %= 86400;
+          el.textContent = "⏳ Plus que " + (j ? j + " jour" + (j > 1 ? "s " : " ") : "") + two(Math.floor(r / 3600)) + " h " + two(Math.floor(r % 3600 / 60)) + " min " + two(r % 60) + " s";
+        }
+        el.classList.remove("hidden");
+      };
+      const timer = setInterval(tick, 1000); tick();
+    };
     const wishes = ()=>{
       // liste stockée en JSON [{t:cadeau, u:lien}] ; un ancien texte simple donne une ligne par cadeau
       const parse = txt => { txt = (txt || "").trim(); if(!txt) return [];
@@ -1295,7 +1317,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.13"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.14"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
