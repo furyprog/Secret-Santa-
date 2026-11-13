@@ -50,7 +50,7 @@
   .send:first-child{border-top:none}
   .send .who{flex:1;min-width:120px}
   .send .who b{display:block}
-  .send .who small{color:var(--muted)}
+  .send .who small{color:var(--muted);display:block}
   .send.done .who b{text-decoration:line-through;color:var(--muted)}
   .chk{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
   .chk input{width:auto}
@@ -148,6 +148,8 @@
       <p>Chaque personne reçoit un lien personnel : en l'ouvrant, elle touche le cadeau, qui s'ouvre en musique, et découvre le nom. <b>N'ouvre pas les liens toi-même</b>, sinon tu connaîtras le résultat.</p>
       <h3>🔒 Liens protégés</h3>
       <p>Si tu as indiqué le téléphone d'une personne, son lien est protégé&nbsp;: pour voir le nom, elle doit saisir les <b>4 derniers chiffres de son numéro</b>. Quelqu'un qui tomberait sur le lien ne peut donc pas voir le résultat. Sans téléphone, le lien s'ouvre sans code (indiqué « lien sans code » dans la liste).</p>
+      <h3>👀 Qui a ouvert son lien&nbsp;?</h3>
+      <p>Sous chaque nom, l'appli indique « a ouvert son lien le … à … » dès que la personne a ouvert son cadeau, ou « lien pas encore ouvert ». C'est mis à jour tout seul. Seul un code anonyme est envoyé au serveur&nbsp;: ni nom, ni numéro, ni tirage.</p>
       <h3>✅ Envoyé / Confirmé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Coche <b>confirmé</b> quand la personne t'a prévenu qu'elle a bien reçu son tirage. Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -328,8 +330,8 @@
   const $ = id => document.getElementById(id);
 
   // ---------- encodage du lien ----------
-  function encode(giver, receiver, budget, org, group, when, age){
-    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/") + "|" + (when||"") + (age ? "|" + age : ""));
+  function encode(giver, receiver, budget, org, group, when, age, vid){
+    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/") + "|" + (when||"") + ((age || vid) ? "|" + (age||"") : "") + (vid ? "|" + vid : ""));
     let sum = 0, hex = "";
     bytes.forEach((b,i)=>{ sum = (sum + b) & 255; const x = b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); hex += x.toString(16).padStart(2,"0"); });
     return "s" + hex + sum.toString(16).padStart(2,"0");
@@ -341,8 +343,13 @@
     for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
-    return (parts.length >= 2 && parts.length <= 7) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||""} : null;
+    return (parts.length >= 2 && parts.length <= 8) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||"", vid:parts[7]||""} : null;
   }
+
+  // ---------- petit serveur : qui a ouvert son lien (aucun nom, seulement un code anonyme) ----------
+  const API = "https://secret-santa.progfury.workers.dev";
+  function newVid(){ const a = new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a, x => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36]).join(""); }
+  function markSeen(vid){ if(!vid) return; try{ fetch(API + "/vu", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id:vid}), keepalive:true}).catch(()=>{}); }catch(e){} }
 
   // ---------- verrou par les 4 derniers chiffres du téléphone ----------
   function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
@@ -460,7 +467,7 @@
       jingle(); $("gift").classList.add("opening");
       setTimeout(confetti, 1000);
       setTimeout(reveal, 1350); };
-    const reveal = ()=>{ $("gift").classList.add("hidden");
+    const reveal = ()=>{ $("gift").classList.add("hidden"); markSeen(d.vid);
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
       if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
@@ -530,10 +537,11 @@
 
   // ---------- budget / organisateur ----------
   function phoneOf(n){ const p = state.people.find(q => full(q) === n); return p ? p.phone : ""; }
-  function tok(g, r){
+  function tok(g, r, vid){
+    if(!vid){ const t = (state.draw || []).find(x => x.name === g); vid = t && t.vid ? t.vid : ""; }
     const pin = pinOf(phoneOf(g)), age = ageOf(r);
-    if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, waNumber(state.orgPhone), state.group, whenText(), "");
-    return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText(), age);
+    if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, waNumber(state.orgPhone), state.group, whenText(), "", vid);
+    return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText(), age, vid);
   }
   function recv(t){ // destinataire en clair (l'organisateur connaît les téléphones)
     const d = decode(t.token); if(!d) return null;
@@ -562,7 +570,7 @@
   $("budget").oninput = ()=>{ state.budget = $("budget").value.trim(); settingsChanged("Le montant a changé"); };
   function settingsChanged(what){
     if(state.draw){
-      state.draw.forEach(t=>{ const r = recv(t); if(r !== null) t.token = tok(t.name, r); });
+      state.draw.forEach(t=>{ const r = recv(t); if(r !== null){ if(!t.vid) t.vid = newVid(); t.token = tok(t.name, r); } });
       state.sent = {};
       $("drawInfo").innerHTML = '<div class="err" style="display:block">' + what + ' : le tirage reste le même, mais renvoie les liens à tout le monde pour que ce soit pris en compte.</div>';
       renderSend();
@@ -588,7 +596,7 @@
       changes[G.name] = tgt(A); changes[A.name] = R;
     }
     state.draw = D.filter(t => t !== X);
-    state.draw.forEach(t => { if(changes[t.name]){ t.token = tok(t.name, changes[t.name]); state.changed[t.name] = true; state.sent[t.name] = false; delete state.confirmed[t.name]; } });
+    state.draw.forEach(t => { if(changes[t.name]){ if(!t.vid) t.vid = newVid(); t.token = tok(t.name, changes[t.name]); state.changed[t.name] = true; state.sent[t.name] = false; delete state.confirmed[t.name]; } });
     delete state.sent[name]; delete state.changed[name]; delete state.confirmed[name];
     state.people = state.people.filter(p => full(p) !== name);
     save(); renderRows();
@@ -611,8 +619,10 @@
     const G = shuffle(state.draw.slice()).find(t => ok(t.name, N) && ok(N, tgt(t)));
     if(!G){ state.people.pop(); return "Impossible d'ajouter cette personne sans refaire un tirage complet (vérifie son groupe)."; }
     const R = tgt(G);
+    if(!G.vid) G.vid = newVid();
     G.token = tok(G.name, N); state.changed[G.name] = "ajout"; state.sent[G.name] = false; delete state.confirmed[G.name];
-    state.draw.push({name:N, phone:(p.phone||"").trim(), token:tok(N, R)});
+    const vid = newVid();
+    state.draw.push({name:N, phone:(p.phone||"").trim(), vid, token:tok(N, R, vid)});
     save(); renderRows(); renderSend();
     $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(N) + ' a été ajouté(e) au tirage. 2 personnes doivent recevoir un lien : ' + esc(N) + ' et ' + esc(G.name) + ' (en jaune ci-dessous, son destinataire a changé).</div>';
     return null;
@@ -667,7 +677,8 @@
     drawArm = false;
     const res = doDraw(people);
     if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
-    state.draw = people.map((p,i)=>({name:p.name, phone:p.phone, token:tok(p.name, people[res[i]].name)}));
+    state.draw = people.map((p,i)=>{ const vid = newVid(); return {name:p.name, phone:p.phone, vid, token:tok(p.name, people[res[i]].name, vid)}; });
+    state.seen = {};
     state.sent = {}; state.changed = {}; state.confirmed = {}; save();
     $("draw").textContent = "🎲 Relancer le tirage";
     $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les groupes. Le résultat est caché dans les liens.</div>';
@@ -712,13 +723,39 @@
       const sms = "sms:" + (num ? "+" + num : "") + (ios ? "&" : "?") + "body=" + encodeURIComponent(msg);
       return {msg, wa, num, ch, sms};
   }
-  function ROW(t, wa, num, ch, sms){ return `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}${pinOf(t.phone) ? " · 🔒 protégé" : " · ⚠️ lien sans code"}</small></div>
+  function ROW(t, wa, num, ch, sms){ return `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}${pinOf(t.phone) ? " · 🔒 protégé" : " · ⚠️ lien sans code"}</small><small class="seen">${seenTxt(t)}</small></div>
         <a class="btn wa small" href="${wa}" target="_blank" rel="noopener">Envoyer</a>
         <a class="btn ghost small sms" href="${sms}">SMS</a>
         <button class="btn ghost small cp">Copier</button>
         <label class="chk"><input type="checkbox" class="cs" ${state.sent[t.name]?"checked":""}> envoyé</label>
         <label class="chk"><input type="checkbox" class="cc" ${state.confirmed[t.name]?"checked":""}> confirmé</label>
         <button class="btn ghost small rm">Retirer</button>`; }
+  function seenTxt(t){
+    if(!t.vid) return "";
+    const v = (state.seen || {})[t.vid];
+    if(!v) return "⏳ lien pas encore ouvert";
+    const d = new Date(v);
+    return "👀 a ouvert son lien le " + d.toLocaleDateString("fr-FR", {day:"2-digit", month:"2-digit"}) + " à " + d.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
+  }
+  let seenBusy = false;
+  async function refreshSeen(){
+    if(!state.draw || seenBusy || document.hidden) return;
+    const ids = state.draw.map(t => t.vid).filter(Boolean);
+    if(!ids.length) return;
+    seenBusy = true;
+    try{
+      const r = await fetch(API + "/vus?ids=" + ids.join(","), {cache:"no-store"});
+      if(r.ok){
+        const got = await r.json(); state.seen = state.seen || {};
+        let changed = false;
+        for(const id of ids){ if(got[id] && state.seen[id] !== got[id]){ state.seen[id] = got[id]; changed = true; } }
+        if(changed){ save(); renderSend(); }
+      }
+    }catch(e){}
+    seenBusy = false;
+  }
+  setInterval(refreshSeen, 30000);
+  document.addEventListener("visibilitychange", refreshSeen);
   function bindRow(row, t, msg){
       const cb = row.querySelector(".cs");
       row.querySelector(".cc").onchange = (e)=>{ state.confirmed[t.name] = e.target.checked; save(); renderNext(); };
@@ -747,7 +784,8 @@
     nextT = todo[0] || null;
     const btn = $("nextBtn");
     const nConf = state.draw.filter(t => state.confirmed[t.name]).length;
-    const confTxt = "  •  Confirmés : " + nConf + "/" + state.draw.length;
+    const nSeen = state.draw.filter(t => t.vid && (state.seen||{})[t.vid]).length;
+    const confTxt = "  •  Liens ouverts : " + nSeen + "/" + state.draw.length + "  •  Confirmés : " + nConf + "/" + state.draw.length;
     if(!nextT){ btn.classList.add("hidden"); $("nextSms").classList.add("hidden"); $("nextInfo").textContent = "✅ Tout le monde a reçu son message." + confTxt; return; }
     btn.classList.remove("hidden"); $("nextSms").classList.remove("hidden");
     btn.href = msgFor(nextT).wa; $("nextSms").href = msgFor(nextT).sms;
@@ -767,7 +805,7 @@
 
   // ---------- sauvegarde / restauration ----------
   function backupCode(){
-    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo, ssName:ssList.names[ssList.cur]||""}));
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo, seen:state.seen||{}, ssName:ssList.names[ssList.cur]||""}));
     let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
     return "SS1:" + btoa(bin);
   }
@@ -811,7 +849,7 @@
     }
     if(same && mode === "copy") d.ssName = uniqueName(d.ssName);
     if(same && mode === "replace"){
-      const st = {people:d.people, draw:d.draw||null, sent:d.sent||{}, budget:d.budget||"", changed:d.changed||{}, orgPhone:d.orgPhone||"", confirmed:d.confirmed||{}, group:d.group||"", dateFrom:d.dateFrom||"", dateTo:d.dateTo||""};
+      const st = {people:d.people, draw:d.draw||null, sent:d.sent||{}, budget:d.budget||"", changed:d.changed||{}, orgPhone:d.orgPhone||"", confirmed:d.confirmed||{}, group:d.group||"", dateFrom:d.dateFrom||"", dateTo:d.dateTo||"", seen:d.seen||{}};
       try{ localStorage.setItem(keyOf(same), JSON.stringify(st)); }catch(e){}
       ssList.cur = same; saveList();
       try{ sessionStorage.setItem("ss-restored", "remplace"); }catch(e){}
@@ -819,7 +857,7 @@
     }
     if(!empty){ // on ne remplace pas le Secret Santa affiché : la sauvegarde va dans un nouveau
       const id = Date.now().toString(36);
-      const st = {people:d.people, draw:d.draw||null, sent:d.sent||{}, budget:d.budget||"", changed:d.changed||{}, orgPhone:d.orgPhone||"", confirmed:d.confirmed||{}, group:d.group||"", dateFrom:d.dateFrom||"", dateTo:d.dateTo||""};
+      const st = {people:d.people, draw:d.draw||null, sent:d.sent||{}, budget:d.budget||"", changed:d.changed||{}, orgPhone:d.orgPhone||"", confirmed:d.confirmed||{}, group:d.group||"", dateFrom:d.dateFrom||"", dateTo:d.dateTo||"", seen:d.seen||{}};
       try{ localStorage.setItem(keyOf(id), JSON.stringify(st)); }catch(e){}
       ssList.ids.push(id); ssList.cur = id; if(d.ssName) ssList.names[id] = d.ssName; saveList();
       try{ sessionStorage.setItem("ss-restored", "1"); }catch(e){}
@@ -827,6 +865,7 @@
     }
     if(d.ssName){ ssList.names[ssList.cur] = d.ssName; saveList(); renderList(); }
     state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup();
+    state.seen = d.seen || {};
     state.dateFrom = d.dateFrom || ""; state.dateTo = d.dateTo || ""; $("dateFrom").value = state.dateFrom; $("dateTo").value = state.dateTo; showWhen(); $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
     $("draw").textContent = state.draw ? "🎲 Relancer le tirage" : "🎲 Lancer le tirage";
@@ -892,6 +931,7 @@
   if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
   try{ const r = sessionStorage.getItem("ss-restored"); if(r){ sessionStorage.removeItem("ss-restored"); $("drawInfo").innerHTML = '<div class="ok">✅ Sauvegarde restaurée ' + (r === "remplace" ? "à la place de l'ancien Secret Santa du même nom" : "dans un nouveau Secret Santa (voir « Mes Secret Santa » en haut)") + '. Tu peux renvoyer les liens.</div>'; } }catch(e){}
   renderSend();
+  refreshSeen();
 })();
 </script>
 <script>
@@ -905,7 +945,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.9"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.10"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
