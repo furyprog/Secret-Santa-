@@ -158,7 +158,7 @@
       <h3>🎄 Plusieurs Secret Santa</h3>
       <p>En haut de la page, <b>Mes Secret Santa</b> permet d'en gérer plusieurs en même temps (famille, travail, amis…). <b>+ Nouveau</b> en crée un vide (tu lui donnes un nom), <b>Renommer</b> change le nom de celui qui est affiché, le menu permet de passer de l'un à l'autre, et <b>Supprimer</b> efface celui qui est affiché. Chacun garde ses participants, son tirage et ses envois.</p>
       <h3>🛟 Récupérer un tirage</h3>
-      <p>Pendant un tirage, on peut corriger un téléphone ou un âge sans rien perdre&nbsp;: seul le lien concerné est refait. Si un tirage a été remplacé ou annulé, le bouton <b>Récupérer le tirage précédent</b> (étape 2) le fait revenir. Et sans sauvegarde, colle les messages déjà envoyés dans <b>Restaurer une sauvegarde</b>&nbsp;: l'appli reconstruit le tirage à partir des liens.</p>
+      <p>Pendant un tirage, on peut corriger un prénom, un nom, un groupe, un téléphone ou un âge sans rien perdre&nbsp;: seuls les liens concernés sont refaits, et l'appli dit à qui les renvoyer. Si un tirage a été remplacé ou annulé, le bouton <b>Récupérer le tirage précédent</b> (étape 2) le fait revenir. Et sans sauvegarde, colle les messages déjà envoyés dans <b>Restaurer une sauvegarde</b>&nbsp;: l'appli reconstruit le tirage à partir des liens.</p>
       <h3>💾 Sauvegarde</h3>
       <p>Après le tirage, garde une copie (sur WhatsApp, en copiant le code ou en fichier). Le code commence par <b>SS1:</b> et reste illisible : tu peux le garder sans connaître le résultat.</p>
       <p>Pour retrouver ton tirage (autre téléphone, données effacées…), ouvre <b>Restaurer une sauvegarde</b>, colle le code ou ouvre le fichier, puis appuie sur <b>Restaurer</b>.</p>
@@ -210,7 +210,7 @@
     </div>
     <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
     <div id="rows"></div>
-    <p class="hint hidden" id="lockHint">🔒 Tirage en cours&nbsp;: tu peux corriger un téléphone ou un âge sans rien perdre. Pour changer les participants, utilise <b>Retirer</b> ou <b>Ajouter un retardataire</b> (étape 3), ou relance le tirage.</p>
+    <p class="hint hidden" id="lockHint">🔒 Tirage en cours&nbsp;: tu peux corriger un prénom, un nom, un groupe, un téléphone ou un âge sans rien perdre (l'appli te dit à qui renvoyer un lien). Pour ajouter ou enlever quelqu'un, utilise <b>Ajouter un retardataire</b> ou <b>Retirer</b> (étape 3).</p>
     <div class="actions">
       <button class="btn ghost small" id="addRow">+ Ajouter</button>
       <button class="btn ghost small" id="toggleBulk">Coller une liste</button>
@@ -500,7 +500,7 @@
     const box = $("rows"); box.innerHTML = "";
     state.people.forEach((p,i)=>{
       const r = document.createElement("div"); r.className = "row";
-      const lk = state.draw ? " readonly" : "";
+      const lk = "";
       r.innerHTML = `<input placeholder="Prénom" value="${esc(p.name)}" data-k="name"${lk}>
         <input placeholder="Nom" value="${esc(p.last)}" data-k="last"${lk}>
         <input placeholder="Groupe" value="${esc(p.family)}" data-k="family"${lk}>
@@ -520,8 +520,19 @@
           const g = state.draw.find(x => recv(x) === full(p)); if(g){ g.token = tok(g.name, full(p)); renderSend(); }
           save(); return;
         }
-        if(state.draw) return;
+        if(state.draw) return; // prénom, nom, groupe : pris en compte à la fin de la saisie (voir onchange)
         p[k] = inp.value; invalidate(); save(); updateCount(); });
+      r.querySelectorAll('[data-k=name],[data-k=last],[data-k=family]').forEach(inp => inp.onchange = ()=>{
+        if(!state.draw) return;
+        const k = inp.dataset.k, old = full(p), before = p[k];
+        p[k] = inp.value.trim();
+        if(k === "family"){ save(); checkGroups(); return; }
+        const nw = full(p);
+        if(nw === old) { save(); return; }
+        const clash = !p.name.trim() || state.people.some(q => q !== p && full(q).toLowerCase() === nw.toLowerCase());
+        if(clash){ p[k] = before; inp.value = before; $("drawInfo").innerHTML = '<div class="err" style="display:block">' + (p.name.trim() ? "« " + esc(nw) + " » existe déjà." : "Le prénom ne peut pas être vide.") + '</div>'; showSendInfo(); return; }
+        renamePerson(old, nw);
+      });
       r.querySelector(".x").onclick = ()=>{ state.people.splice(i,1); invalidate(); save(); renderRows(); };
       box.appendChild(r);
     });
@@ -529,7 +540,6 @@
   }
   function lockRows(){ // pendant un tirage : seuls le téléphone et l'âge restent modifiables
     const on = !!state.draw;
-    $("rows").querySelectorAll('[data-k=name],[data-k=last],[data-k=family]').forEach(i => i.readOnly = on);
     $("rows").querySelectorAll('.x').forEach(x => x.classList.toggle("hidden", on));
     $("lockHint").classList.toggle("hidden", !on);
     ["addRow","toggleBulk"].forEach(id => $(id).disabled = on);
@@ -543,6 +553,26 @@
   function keepPrev(){ // garde une copie du tirage avant de le remplacer ou de l'annuler
     if(!state.draw) return;
     try{ localStorage.setItem(LS + ".precedent", JSON.stringify({at:Date.now(), people:state.people, draw:state.draw, sent:state.sent, changed:state.changed, seen:state.seen||{}})); }catch(e){}
+  }
+  // ---------- correction d'un prénom / nom pendant un tirage : le tirage est gardé ----------
+  function renamePerson(old, nw){
+    const t = state.draw.find(x => x.name === old); if(!t){ save(); return; }
+    const rc = recv(t), G = state.draw.find(x => x !== t && recv(x) === old);
+    t.name = nw; if(rc !== null) t.token = tok(nw, rc, t.vid);
+    if(G) G.token = tok(G.name, nw);
+    for(const m of [state.sent, state.changed, state.confirmed || {}]){ if(old in m){ m[nw] = m[old]; delete m[old]; } }
+    state.sent[nw] = false; if(G) state.sent[G.name] = false;
+    save(); renderSend(); renderList();
+    $("drawInfo").innerHTML = '<div class="ok">✏️ Nom corrigé, le tirage est conservé. Renvoie leur lien à : ' + esc(nw) + (G ? ' et ' + esc(G.name) : '') + '.</div>';
+    showSendInfo();
+  }
+  function checkGroups(){
+    const fam = {}; state.people.forEach(q => { const f = (q.family||"").trim().toLowerCase(); fam[full(q)] = f ? "f:" + f : "solo:" + full(q); });
+    const bad = state.draw.filter(t => { const r = recv(t); return r && fam[t.name] === fam[r]; }).map(t => t.name);
+    $("drawInfo").innerHTML = bad.length
+      ? '<div class="err" style="display:block">Groupe modifié, le tirage est conservé. Attention : avec ce changement, ' + bad.map(esc).join(", ") + ' offre à quelqu\'un du même groupe. Utilise Retirer / Ajouter un retardataire, ou relance le tirage si tu veux en tenir compte.</div>'
+      : '<div class="ok">✅ Groupe modifié, le tirage est conservé et reste valable.</div>';
+    showSendInfo();
   }
   function invalidate(){ keepPrev(); if(state.draw){ state.draw = null; state.sent = {}; renderSend(); $("drawInfo").innerHTML = '<div class="err" style="display:block">La liste a changé : le tirage précédent est annulé, relance-le.</div>'; } }
 
@@ -1068,7 +1098,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.3"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.4"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
