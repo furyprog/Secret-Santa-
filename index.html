@@ -153,10 +153,11 @@
       <h3>➕ Retardataire</h3>
       <p>Quelqu'un arrive après le tirage&nbsp;? Dans l'étape 3, appuie sur <b>Ajouter un retardataire</b>, remplis ses informations puis <b>Ajouter au tirage</b>. Pas besoin de tout refaire&nbsp;: une seule personne change de destinataire. Elle apparaît en jaune avec « à prévenir », et le nouveau venu apparaît dans la liste&nbsp;: envoie-leur leur lien.</p>
       <h3>🎄 Plusieurs Secret Santa</h3>
-      <p>En haut de la page, <b>Mes Secret Santa</b> permet d'en gérer plusieurs en même temps (famille, travail, amis…). <b>+ Nouveau</b> en crée un vide, le menu permet de passer de l'un à l'autre, et <b>Supprimer</b> efface celui qui est affiché. Chacun garde ses participants, son tirage et ses envois.</p>
+      <p>En haut de la page, <b>Mes Secret Santa</b> permet d'en gérer plusieurs en même temps (famille, travail, amis…). <b>+ Nouveau</b> en crée un vide (tu lui donnes un nom), <b>Renommer</b> change le nom de celui qui est affiché, le menu permet de passer de l'un à l'autre, et <b>Supprimer</b> efface celui qui est affiché. Chacun garde ses participants, son tirage et ses envois.</p>
       <h3>💾 Sauvegarde</h3>
       <p>Après le tirage, garde une copie (sur WhatsApp, en copiant le code ou en fichier). Le code commence par <b>SS1:</b> et reste illisible : tu peux le garder sans connaître le résultat.</p>
       <p>Pour retrouver ton tirage (autre téléphone, données effacées…), ouvre <b>Restaurer une sauvegarde</b>, colle le code ou ouvre le fichier, puis appuie sur <b>Restaurer</b>.</p>
+      <p>Avec plusieurs Secret Santa, chacun a sa propre sauvegarde, qui garde aussi son nom. La restauration n'écrase rien&nbsp;: si le Secret Santa affiché contient déjà des participants, la sauvegarde est remise dans un nouveau Secret Santa. Si un Secret Santa porte déjà le même nom, l'appli te demande si tu veux le remplacer ou garder les deux.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Tes données restent sur ton téléphone. Bonnes fêtes ! 🎄</p>
     </div>
   </dialog>
@@ -168,7 +169,17 @@
     <div class="actions" style="margin-top:0;align-items:center">
       <select id="ssSelect" style="flex:1;min-width:180px;font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fffdf9"></select>
       <button class="btn ghost small" id="ssNew">+ Nouveau</button>
+      <button class="btn ghost small" id="ssRen">Renommer</button>
       <button class="btn ghost small rm" id="ssDel">Supprimer</button>
+    </div>
+    <div id="ssNameBox" class="hidden" style="margin-top:10px">
+      <label for="ssName" id="ssNameLabel">Nom</label>
+      <div class="actions" style="margin-top:0">
+        <input id="ssName" type="text" placeholder="ex. Noël en famille, Bureau, Les amis…" style="flex:1;min-width:180px">
+        <button class="btn primary small" id="ssNameOk">OK</button>
+        <button class="btn ghost small" id="ssNameCancel">Annuler</button>
+      </div>
+      <div class="err hidden" id="ssNameErr" style="display:block"></div>
     </div>
   </div>
 
@@ -298,9 +309,10 @@
   // plusieurs Secret Santa : chacun a sa propre sauvegarde dans le navigateur
   const LIST = "secretSanta.list";
   const keyOf = id => id === "0" ? "secretSanta.v1" : "secretSanta.v1." + id;
-  let ssList = { cur:"0", ids:["0"] };
+  let ssList = { cur:"0", ids:["0"], names:{} };
   try{ const l = JSON.parse(localStorage.getItem(LIST)); if(l && Array.isArray(l.ids) && l.ids.length) ssList = l; }catch(e){}
   if(!ssList.ids.includes(ssList.cur)) ssList.cur = ssList.ids[0];
+  if(!ssList.names) ssList.names = {};
   const saveList = ()=>{ try{ localStorage.setItem(LIST, JSON.stringify(ssList)); }catch(e){} };
   const LS = keyOf(ssList.cur);
   const $ = id => document.getElementById(id);
@@ -323,22 +335,59 @@
   }
 
   // ---------- animation et musique d'ouverture ----------
+  function jingleSong(A, t0){
+    const N = {C3:130.81,D3:146.83,F3:174.61,G2:98.00,A3:220,B3:246.94,C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99};
+    const b = 0.19; // durée d'un temps
+    const out = A.createGain(); out.gain.value = 0.9;
+    const comp = A.createDynamicsCompressor(); out.connect(comp); comp.connect(A.destination);
+    function tone(f, t, d, type, vol, attack, release){
+      const o = A.createOscillator(), g = A.createGain();
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + d + release);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + d + release + 0.05);
+    }
+    function bell(f, t, d){ // mélodie : boîte à musique / clochette
+      tone(f, t, d*0.6, "sine", 0.26, 0.005, 0.5);
+      tone(f*2, t, d*0.3, "sine", 0.06, 0.003, 0.25);
+      tone(f*3.01, t, 0.05, "sine", 0.03, 0.002, 0.15);
+      tone(f, t, d*0.9, "triangle", 0.05, 0.01, 0.2);
+    }
+    const noise = A.createBuffer(1, A.sampleRate * 0.3, A.sampleRate);
+    const nd = noise.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
+    function sleigh(t, vol){ // grelots
+      const s = A.createBufferSource(); s.buffer = noise;
+      const hp = A.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
+      const bp = A.createBiquadFilter(); bp.type = "peaking"; bp.frequency.value = 9500; bp.gain.value = 8;
+      const g = A.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(out); s.start(t); s.stop(t + 0.25);
+    }
+    const mel = [["E5",1],["E5",1],["E5",2],["E5",1],["E5",1],["E5",2],["E5",1],["G5",1],["C5",1.5],["D5",.5],["E5",4],
+                 ["F5",1],["F5",1],["F5",1.5],["F5",.5],["F5",1],["E5",1],["E5",1],["E5",.5],["E5",.5],["G5",1],["G5",1],["F5",1],["D5",1],["C5",4]];
+    let t = t0;
+    mel.forEach(([n,d])=>{ bell(N[n], t, d*b); t += d*b; });
+    // accompagnement : basse + accords, une mesure = 4 temps
+    const bars = [["C3",["C4","E4","G4"]],["C3",["C4","E4","G4"]],["C3",["C4","E4","G4"]],["C3",["C4","E4","G4"]],
+                  ["F3",["C4","F4","A4"]],["C3",["C4","E4","G4"]],["G2",["B3","D4","F4"]],["C3",["C4","E4","G4"]]];
+    bars.forEach(([bass, ch], i)=>{
+      const m = t0 + i*4*b;
+      tone(N[bass], m, b*1.6, "triangle", 0.22, 0.01, 0.15);
+      tone(N[bass]*1.5, m + 2*b, b*1.6, "triangle", 0.16, 0.01, 0.15);
+      [1,3].forEach(k => ch.forEach(n => tone(N[n], m + k*b, b*0.5, "triangle", 0.045, 0.01, 0.12)));
+      for(let k=0;k<8;k++) sleigh(m + k*b/2, k % 2 ? 0.05 : 0.11);
+    });
+    // final : accord tenu + grelots
+    const end = t0 + 32*b;
+    ["C4","E4","G4","C5"].forEach(n => tone(N[n], end, 0.8, "sine", 0.06, 0.02, 0.8));
+    tone(N.C3, end, 0.8, "triangle", 0.2, 0.01, 0.8);
+    for(let k=0;k<6;k++) sleigh(end + k*0.05, 0.08);
+    return end + 1.6 - t0;
+  }
   function jingle(){
     try{
       const A = new (window.AudioContext || window.webkitAudioContext)();
-      const E = 659.25, G = 783.99, C = 523.25, D = 587.33, q = 0.2;
-      const notes = [[E,1],[E,1],[E,2],[E,1],[E,1],[E,2],[E,1],[G,1],[C,1.5],[D,.5],[E,4]];
-      let t = A.currentTime + 0.05;
-      notes.forEach(([f,d])=>{
-        [1, 2.01, 3.02].forEach((h,i)=>{ // son de clochette
-          const o = A.createOscillator(), g = A.createGain();
-          o.type = "sine"; o.frequency.value = f * h;
-          const v = [0.22, 0.07, 0.03][i];
-          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, t + Math.max(d*q, 0.15) + 0.35);
-          o.connect(g); g.connect(A.destination); o.start(t); o.stop(t + d*q + 0.4);
-        });
-        t += d * q;
-      });
+      if(A.resume) A.resume();
+      jingleSong(A, A.currentTime + 0.05);
     }catch(e){}
   }
   function confetti(){
@@ -389,7 +438,8 @@
   // ---------- état organisateur ----------
   let state = { people:[{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""}], budget:"", orgPhone:"", group:"", dateFrom:"", dateTo:"", draw:null, sent:{}, changed:{}, confirmed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
-  const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} };
+  let onSave = null;
+  const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); };
 
   function renderRows(){
     const box = $("rows"); box.innerHTML = "";
@@ -665,7 +715,7 @@
 
   // ---------- sauvegarde / restauration ----------
   function backupCode(){
-    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo}));
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo, ssName:ssList.names[ssList.cur]||""}));
     let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
     return "SS1:" + btoa(bin);
   }
@@ -695,9 +745,35 @@
     a.href = URL.createObjectURL(new Blob([backupCode()], {type:"text/plain"}));
     a.download = "secret-santa-sauvegarde.txt"; document.body.appendChild(a); a.click(); a.remove();
   };
-  function restore(code){
+  function restore(code, mode){
     const d = readBackup(code), box = $("restoreMsg");
     if(!d){ box.innerHTML = '<div class="err" style="display:block">Code de sauvegarde invalide.</div>'; return; }
+    const empty = !state.draw && !state.people.some(p => (p.name||"").trim()) && !ssList.names[ssList.cur];
+    // un Secret Santa du même nom existe déjà ?
+    const same = d.ssName ? nameOwner(d.ssName, empty ? ssList.cur : null) : null;
+    if(same && !mode){
+      box.innerHTML = '<div class="err" style="display:block">Un Secret Santa nommé « ' + esc(d.ssName) + ' » existe déjà. Que veux-tu faire&nbsp;?<div class="actions"><button class="btn primary small" id="rsReplace">Le remplacer par la sauvegarde</button><button class="btn ghost small" id="rsCopy">Garder les deux</button></div></div>';
+      $("rsReplace").onclick = ()=> restore(code, "replace");
+      $("rsCopy").onclick = ()=> restore(code, "copy");
+      return;
+    }
+    if(same && mode === "copy") d.ssName = uniqueName(d.ssName);
+    if(same && mode === "replace"){
+      const st = {people:d.people, draw:d.draw||null, sent:d.sent||{}, budget:d.budget||"", changed:d.changed||{}, orgPhone:d.orgPhone||"", confirmed:d.confirmed||{}, group:d.group||"", dateFrom:d.dateFrom||"", dateTo:d.dateTo||""};
+      try{ localStorage.setItem(keyOf(same), JSON.stringify(st)); }catch(e){}
+      ssList.cur = same; saveList();
+      try{ sessionStorage.setItem("ss-restored", "remplace"); }catch(e){}
+      location.reload(); return;
+    }
+    if(!empty){ // on ne remplace pas le Secret Santa affiché : la sauvegarde va dans un nouveau
+      const id = Date.now().toString(36);
+      const st = {people:d.people, draw:d.draw||null, sent:d.sent||{}, budget:d.budget||"", changed:d.changed||{}, orgPhone:d.orgPhone||"", confirmed:d.confirmed||{}, group:d.group||"", dateFrom:d.dateFrom||"", dateTo:d.dateTo||""};
+      try{ localStorage.setItem(keyOf(id), JSON.stringify(st)); }catch(e){}
+      ssList.ids.push(id); ssList.cur = id; if(d.ssName) ssList.names[id] = d.ssName; saveList();
+      try{ sessionStorage.setItem("ss-restored", "1"); }catch(e){}
+      location.reload(); return;
+    }
+    if(d.ssName){ ssList.names[ssList.cur] = d.ssName; saveList(); renderList(); }
     state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup();
     state.dateFrom = d.dateFrom || ""; state.dateTo = d.dateTo || ""; $("dateFrom").value = state.dateFrom; $("dateTo").value = state.dateTo; showWhen(); $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
@@ -713,7 +789,8 @@
     let st = null; try{ st = JSON.parse(localStorage.getItem(keyOf(id))); }catch(e){}
     const g = st && st.group ? st.group : "";
     const n = st && st.people ? st.people.filter(p => (p.name||"").trim()).length : 0;
-    return "Secret Santa " + (g || "n°" + (i+1)) + " (" + n + " participant" + (n>1?"s":"") + ")";
+    const name = ssList.names[id] || ("Secret Santa " + (g || "n°" + (i+1)));
+    return name + " (" + n + " participant" + (n>1?"s":"") + ")";
   }
   function renderList(){
     const sel = $("ssSelect"); sel.innerHTML = "";
@@ -721,20 +798,47 @@
     $("ssDel").classList.toggle("hidden", ssList.ids.length < 2);
   }
   $("ssSelect").onchange = ()=>{ save(); ssList.cur = $("ssSelect").value; saveList(); location.reload(); };
-  $("ssNew").onclick = ()=>{ save(); const id = Date.now().toString(36); ssList.ids.push(id); ssList.cur = id; saveList(); location.reload(); };
+  function nameOwner(name, exceptId){ const n = name.trim().toLowerCase(); return ssList.ids.find(id => id !== exceptId && (ssList.names[id]||"").trim().toLowerCase() === n) || null; }
+  function uniqueName(name){ let k = 2; while(nameOwner(name + " (" + k + ")")) k++; return name + " (" + k + ")"; }
+  let nameMode = "";
+  function askName(mode){
+    nameMode = mode; $("ssNameBox").classList.remove("hidden");
+    $("ssNameLabel").textContent = mode === "new" ? "Nom du nouveau Secret Santa" : "Nouveau nom";
+    $("ssName").value = mode === "new" ? "" : (ssList.names[ssList.cur] || ""); $("ssName").focus();
+  }
+  $("ssNew").onclick = ()=> askName("new");
+  $("ssRen").onclick = ()=> askName("ren");
+  $("ssNameCancel").onclick = ()=>{ $("ssNameBox").classList.add("hidden"); $("ssNameErr").classList.add("hidden"); };
+  $("ssName").onkeydown = e => { if(e.key === "Enter") $("ssNameOk").click(); };
+  $("ssNameOk").onclick = ()=>{
+    const name = $("ssName").value.trim();
+    $("ssNameErr").classList.add("hidden");
+    if(name && nameOwner(name, nameMode === "new" ? null : ssList.cur)){
+      $("ssNameErr").textContent = "Un Secret Santa porte déjà le nom « " + name + " ». Choisis un autre nom.";
+      $("ssNameErr").classList.remove("hidden"); return;
+    }
+    if(nameMode === "new"){
+      save(); const id = Date.now().toString(36); ssList.ids.push(id); ssList.cur = id;
+      if(name) ssList.names[id] = name; saveList(); location.reload(); return;
+    }
+    if(name) ssList.names[ssList.cur] = name; else delete ssList.names[ssList.cur];
+    saveList(); renderList(); $("ssNameBox").classList.add("hidden");
+  };
   let delArm = false;
   $("ssDel").onclick = ()=>{
     if(ssList.ids.length < 2) return;
     if(!delArm){ delArm = true; $("ssDel").textContent = "Confirmer la suppression ?"; setTimeout(()=>{ delArm = false; $("ssDel").textContent = "Supprimer"; }, 3000); return; }
     try{ localStorage.removeItem(LS); }catch(e){}
+    delete ssList.names[ssList.cur];
     ssList.ids = ssList.ids.filter(x => x !== ssList.cur); ssList.cur = ssList.ids[0]; saveList(); location.reload();
   };
   $("group").addEventListener("input", renderList);
   $("rows").addEventListener("input", renderList);
-  saveList(); renderList();
+  saveList(); renderList(); onSave = renderList;
 
   renderRows();
   if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
+  try{ const r = sessionStorage.getItem("ss-restored"); if(r){ sessionStorage.removeItem("ss-restored"); $("drawInfo").innerHTML = '<div class="ok">✅ Sauvegarde restaurée ' + (r === "remplace" ? "à la place de l'ancien Secret Santa du même nom" : "dans un nouveau Secret Santa (voir « Mes Secret Santa » en haut)") + '. Tu peux renvoyer les liens.</div>'; } }catch(e){}
   renderSend();
 })();
 </script>
@@ -749,7 +853,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.6"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.8"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
