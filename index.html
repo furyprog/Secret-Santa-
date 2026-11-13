@@ -87,6 +87,14 @@
   .reveal p{opacity:.92}
   .wishBox{background:rgba(255,255,255,.12);border:1px solid rgba(255,231,168,.5);border-radius:12px;padding:12px 14px;margin:12px 0;text-align:left;font-size:16px}
   .wishBox b{color:#ffe7a8}
+  .wishRow{display:flex;gap:6px;align-items:flex-start;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,231,168,.35)}
+  .wishRow:first-child{border-top:0;padding-top:0}
+  .wishRow .f{flex:1;display:flex;flex-direction:column;gap:5px}
+  .wishRow input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:8px;border-radius:8px;border:1px solid #e6d3a8;background:#fffdf9;color:#3a1a10}
+  .wishRow .x{background:transparent;border:0;color:#ffe7a8;font-size:22px;cursor:pointer;padding:4px 6px}
+  .hisList{margin:0;padding-left:20px}
+  .hisList li{margin:4px 0}
+  .hisList a{color:#ffe7a8;font-weight:600;white-space:nowrap}
   .wishBox textarea{width:100%;box-sizing:border-box;margin-top:8px;font:inherit;font-size:15px;padding:8px;border-radius:8px;border:1px solid #e6d3a8;background:#fffdf9;color:#3a1a10;resize:vertical}
   .snow{position:fixed;inset:0;pointer-events:none;overflow:hidden}
   .snow span{position:absolute;top:-10px;color:#fff;opacity:.7;animation:fall linear infinite}
@@ -153,7 +161,7 @@
       <h3>👀 Qui a ouvert son lien&nbsp;?</h3>
       <p>Sous chaque nom, l'appli indique « a ouvert son lien le … à … » dès que la personne a ouvert son cadeau, ou « lien pas encore ouvert ». C'est mis à jour tout seul. Seul un code anonyme est envoyé au serveur&nbsp;: ni nom, ni numéro, ni tirage.</p>
       <h3>🎁 Idées cadeaux</h3>
-      <p>Sur sa page cadeau, sous le nom découvert, chacun peut écrire <b>Mes idées cadeaux</b> puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
+      <p>Sur sa page cadeau, sous le nom découvert, chacun peut remplir <b>Saisie ici tes cadeaux qui te feraient plaisir</b> (un cadeau par ligne, avec si besoin le lien vers la boutique qui le vend) puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -312,14 +320,15 @@
     <div class="confetti" id="confetti"></div>
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
-    <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="white-space:pre-line;margin-top:6px"></div></div>
+    <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="margin-top:6px"></div></div>
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
     <div id="myWish" class="wishBox hidden" style="margin-top:26px">
-      <b>📝 Mes idées cadeaux</b>
-      <textarea id="myWishTxt" maxlength="1000" rows="4" placeholder="Ex. : un livre de cuisine, des chaussettes rigolotes, un jeu de société…"></textarea>
+      <b>📝 Saisie ici tes cadeaux qui te feraient plaisir</b>
+      <div id="myWishRows"></div>
+      <button type="button" class="btn" id="myWishAdd" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin:6px 0">+ Ajouter un cadeau</button>
       <p style="font-size:13px;margin:4px 0 8px">La personne qui doit te faire un cadeau les verra sur sa page. Tu peux les modifier quand tu veux.</p>
       <button class="btn" id="myWishSave" style="background:#f3cf6b;color:#5a1010">Enregistrer</button>
       <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
@@ -499,11 +508,24 @@
       if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); }
       wishes(); };
     const wishes = ()=>{
+      // liste stockée en JSON [{t:cadeau, u:lien}] ; un ancien texte simple donne une ligne par cadeau
+      const parse = txt => { txt = (txt || "").trim(); if(!txt) return [];
+        try{ const a = JSON.parse(txt); if(Array.isArray(a)) return a.map(x => ({t:String(x.t||""), u:String(x.u||"")})).filter(x => x.t || x.u); }catch(e){}
+        return txt.split("\n").map(l => l.trim()).filter(Boolean).map(t => ({t, u:""})); };
+      const fixUrl = u => { u = (u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u = "https://" + u;
+        try{ const x = new URL(u); return /^https?:$/.test(x.protocol) && x.hostname.includes(".") ? x.href : ""; }catch(e){ return ""; } };
       // idées de la personne à qui j'offre (mises à jour toutes seules)
       const hisKey = wishKey(d.receiver, d);
       const loadHis = ()=> fetch(API + "/souhaits?k=" + hisKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
-        const t = (j.texte || "").trim();
-        $("hisWishTxt").textContent = t || "Pas encore d'idée pour le moment. Elles s'afficheront ici dès qu'elle en aura écrit.";
+        const items = parse(j.texte), box = $("hisWishTxt"); box.innerHTML = "";
+        if(!items.length) box.textContent = "Pas encore d'idée pour le moment. Elles s'afficheront ici dès qu'elle en aura écrit.";
+        else { const ul = document.createElement("ul"); ul.className = "hisList";
+          items.forEach(it => { const li = document.createElement("li"); li.textContent = it.t;
+            const u = fixUrl(it.u);
+            if(u){ const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer";
+              a.textContent = "🛒 " + new URL(u).hostname.replace(/^www\./, ""); if(it.t) li.append(" — "); li.append(a); }
+            ul.appendChild(li); });
+          box.appendChild(ul); }
         $("hisWish").classList.remove("hidden");
       }).catch(()=>{});
       loadHis(); setInterval(loadHis, 60000);
@@ -511,12 +533,27 @@
       // mes propres idées (seulement si le lien a un code anonyme)
       if(!d.vid) return;
       const myKey = wishKey(d.giver, d);
+      const rows = $("myWishRows");
+      const addRow = (it = {t:"", u:""}) => {
+        const r = document.createElement("div"); r.className = "wishRow";
+        r.innerHTML = '<div class="f"><input class="wt" maxlength="200" placeholder="Ex. : un livre de cuisine"><input class="wu" type="url" inputmode="url" maxlength="600" placeholder="Lien vers la boutique (facultatif)"></div><button type="button" class="x" title="Enlever">×</button>';
+        r.querySelector(".wt").value = it.t; r.querySelector(".wu").value = it.u;
+        r.querySelector(".x").onclick = ()=>{ r.remove(); if(!rows.children.length) addRow(); $("myWishMsg").textContent = ""; };
+        rows.appendChild(r); return r; };
+      addRow();
       $("myWish").classList.remove("hidden");
-      fetch(API + "/souhaits?k=" + myKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.texte && !$("myWishTxt").value) $("myWishTxt").value = j.texte; }).catch(()=>{});
-      $("myWishTxt").oninput = ()=>{ $("myWishMsg").textContent = ""; };
+      let touched = false;
+      rows.addEventListener("input", ()=>{ touched = true; $("myWishMsg").textContent = ""; });
+      fetch(API + "/souhaits?k=" + myKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
+        const items = j ? parse(j.texte) : []; if(!items.length || touched) return;
+        rows.innerHTML = ""; items.forEach(addRow); }).catch(()=>{});
+      $("myWishAdd").onclick = ()=>{ addRow().querySelector(".wt").focus(); };
       $("myWishSave").onclick = ()=>{
+        const items = [...rows.querySelectorAll(".wishRow")].map(r => ({t:r.querySelector(".wt").value.trim(), u:r.querySelector(".wu").value.trim()})).filter(x => x.t || x.u);
+        const texte = items.length ? JSON.stringify(items) : "";
+        if(texte.length > 5000){ $("myWishMsg").textContent = "⚠️ Liste trop longue : enlève un cadeau ou un lien."; return; }
         $("myWishMsg").textContent = "Enregistrement…";
-        fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myKey, id:d.vid, texte:$("myWishTxt").value.trim()})})
+        fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myKey, id:d.vid, texte})})
           .then(r => { $("myWishMsg").textContent = r.ok ? "✅ Enregistré" : "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; })
           .catch(()=>{ $("myWishMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
       };
@@ -1139,7 +1176,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.5"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.6"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
