@@ -160,13 +160,13 @@
       <p class="hint">Une seule date pour une réception, ou les deux pour une période. <span id="whenPreview"></span></p>
     </div>
     <div style="margin:0 0 14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:520px;align-items:end">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:520px;align-items:start">
         <div><label for="budget">Montant max. (€)</label>
         <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20"></div>
         <div><label for="orgPhone">Ton numéro</label>
-        <input id="orgPhone" type="tel" inputmode="tel" placeholder="06…"></div>
+        <input id="orgPhone" type="tel" inputmode="tel" placeholder="06…">
+        <p class="hint" style="white-space:nowrap;font-size:12px;margin-top:4px">Pour les confirmations</p></div>
       </div>
-      <p class="hint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pour que chacun te confirme son tirage.</p>
     </div>
     <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
     <div id="rows"></div>
@@ -605,7 +605,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.1"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.2"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
