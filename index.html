@@ -82,6 +82,15 @@
       <label for="group">Précision après « Secret Santa » (facultatif)</label>
       <input id="group" type="text" placeholder="ex. de l'association Les Amis, de la classe 2…">
     </div>
+    <div style="margin:0 0 14px">
+      <label>Date de remise des cadeaux (facultatif)</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="dateFrom" type="date" style="flex:1;min-width:140px">
+        <span style="font-size:13px;color:var(--muted)">jusqu'au</span>
+        <input id="dateTo" type="date" style="flex:1;min-width:140px">
+      </div>
+      <p class="hint">Une seule date pour une réception, ou les deux pour une période. <span id="whenPreview"></span></p>
+    </div>
     <div style="margin:0 0 14px;max-width:260px">
       <label for="budget">Montant maximum du cadeau (€)</label>
       <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
@@ -160,6 +169,7 @@
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
+    <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
     <a id="confirmBtn" class="btn wa hidden" target="_blank" rel="noopener" style="margin:14px 0 4px">✅ C'est noté, prévenir l'organisateur</a>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel</p>
@@ -173,8 +183,8 @@
   const $ = id => document.getElementById(id);
 
   // ---------- encodage du lien ----------
-  function encode(giver, receiver, budget, org, group){
-    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/"));
+  function encode(giver, receiver, budget, org, group, when){
+    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/") + "|" + (when||""));
     let sum = 0, hex = "";
     bytes.forEach((b,i)=>{ sum = (sum + b) & 255; const x = b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); hex += x.toString(16).padStart(2,"0"); });
     return "s" + hex + sum.toString(16).padStart(2,"0");
@@ -186,7 +196,7 @@
     for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
-    return (parts.length >= 2 && parts.length <= 5) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||""} : null;
+    return (parts.length >= 2 && parts.length <= 6) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||""} : null;
   }
 
   // ---------- mode révélation ----------
@@ -202,6 +212,7 @@
     const open = ()=>{ $("gift").classList.add("hidden"); $("tap").classList.add("hidden");
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
+      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); }
       if(d.org){ const c = $("confirmBtn"); c.href = "https://wa.me/" + d.org + "?text=" + encodeURIComponent("✅ " + d.giver + " a bien reçu son Secret Santa 🎅"); c.classList.remove("hidden"); } };
     $("gift").onclick = open;
     const s = $("snow");
@@ -214,7 +225,7 @@
   window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
 
   // ---------- état organisateur ----------
-  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], budget:"", orgPhone:"", group:"", draw:null, sent:{}, changed:{}, confirmed:{} };
+  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], budget:"", orgPhone:"", group:"", dateFrom:"", dateTo:"", draw:null, sent:{}, changed:{}, confirmed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
   const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} };
 
@@ -253,7 +264,18 @@
   };
 
   // ---------- budget / organisateur ----------
-  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone), state.group); }
+  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText()); }
+  function fmtDate(v){ const [y,m,d] = v.split("-").map(Number); return new Date(y, m-1, d).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long", year:"numeric"}); }
+  function whenText(){
+    const a = state.dateFrom, b = state.dateTo;
+    if(a && b && a !== b){ const [x,y] = a < b ? [a,b] : [b,a]; return "du " + fmtDate(x) + " au " + fmtDate(y); }
+    if(a || b) return "le " + fmtDate(a || b);
+    return "";
+  }
+  function showWhen(){ const w = whenText(); $("whenPreview").textContent = w ? "→ « " + w + " »" : ""; }
+  $("dateFrom").value = state.dateFrom || ""; $("dateTo").value = state.dateTo || ""; showWhen();
+  $("dateFrom").onchange = ()=>{ state.dateFrom = $("dateFrom").value; showWhen(); settingsChanged("La date a changé"); };
+  $("dateTo").onchange = ()=>{ state.dateTo = $("dateTo").value; showWhen(); settingsChanged("La date a changé"); };
   function ssTitle(){ return "Secret Santa" + (state.group ? " " + state.group : ""); }
   function showGroup(){ $("groupTitle").textContent = state.group ? " " + state.group : ""; }
   $("group").value = state.group || ""; showGroup();
@@ -374,7 +396,8 @@
   }
   function msgFor(t){
       const url = linkFor(t);
-      const bud = state.budget ? "\n💶 Budget maximum : " + state.budget + " €\n" : "";
+      const w = whenText();
+      const bud = (state.budget ? "\n💶 Budget maximum : " + state.budget + " €" : "") + (w ? "\n📅 Remise des cadeaux : " + w : "") + ((state.budget || w) ? "\n" : "");
       const ch = state.changed && state.changed[t.name];
       const msg = ch
         ? "🎅 " + ssTitle() + " : changement !\n\nBonjour " + t.name + ", suite à un désistement, la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
@@ -440,7 +463,7 @@
 
   // ---------- sauvegarde / restauration ----------
   function backupCode(){
-    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group}));
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo}));
     let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
     return "SS1:" + btoa(bin);
   }
@@ -473,7 +496,8 @@
   function restore(code){
     const d = readBackup(code), box = $("restoreMsg");
     if(!d){ box.innerHTML = '<div class="err" style="display:block">Code de sauvegarde invalide.</div>'; return; }
-    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup(); $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
+    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup();
+    state.dateFrom = d.dateFrom || ""; state.dateTo = d.dateTo || ""; $("dateFrom").value = state.dateFrom; $("dateTo").value = state.dateTo; showWhen(); $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
     $("draw").textContent = state.draw ? "🎲 Relancer le tirage" : "🎲 Lancer le tirage";
     $("drawInfo").innerHTML = state.draw ? '<div class="ok">✅ Tirage restauré. Tu peux renvoyer les liens.</div>' : "";
