@@ -157,6 +157,8 @@
       <p>Quelqu'un arrive après le tirage&nbsp;? Dans l'étape 3, appuie sur <b>Ajouter un retardataire</b>, remplis ses informations puis <b>Ajouter au tirage</b>. Pas besoin de tout refaire&nbsp;: une seule personne change de destinataire. Elle apparaît en jaune avec « à prévenir », et le nouveau venu apparaît dans la liste&nbsp;: envoie-leur leur lien.</p>
       <h3>🎄 Plusieurs Secret Santa</h3>
       <p>En haut de la page, <b>Mes Secret Santa</b> permet d'en gérer plusieurs en même temps (famille, travail, amis…). <b>+ Nouveau</b> en crée un vide (tu lui donnes un nom), <b>Renommer</b> change le nom de celui qui est affiché, le menu permet de passer de l'un à l'autre, et <b>Supprimer</b> efface celui qui est affiché. Chacun garde ses participants, son tirage et ses envois.</p>
+      <h3>🛟 Récupérer un tirage</h3>
+      <p>Pendant un tirage, on peut corriger un téléphone ou un âge sans rien perdre&nbsp;: seul le lien concerné est refait. Si un tirage a été remplacé ou annulé, le bouton <b>Récupérer le tirage précédent</b> (étape 2) le fait revenir. Et sans sauvegarde, colle les messages déjà envoyés dans <b>Restaurer une sauvegarde</b>&nbsp;: l'appli reconstruit le tirage à partir des liens.</p>
       <h3>💾 Sauvegarde</h3>
       <p>Après le tirage, garde une copie (sur WhatsApp, en copiant le code ou en fichier). Le code commence par <b>SS1:</b> et reste illisible : tu peux le garder sans connaître le résultat.</p>
       <p>Pour retrouver ton tirage (autre téléphone, données effacées…), ouvre <b>Restaurer une sauvegarde</b>, colle le code ou ouvre le fichier, puis appuie sur <b>Restaurer</b>.</p>
@@ -208,6 +210,7 @@
     </div>
     <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
     <div id="rows"></div>
+    <p class="hint hidden" id="lockHint">🔒 Tirage en cours&nbsp;: tu peux corriger un téléphone ou un âge sans rien perdre. Pour changer les participants, utilise <b>Retirer</b> ou <b>Ajouter un retardataire</b> (étape 3), ou relance le tirage.</p>
     <div class="actions">
       <button class="btn ghost small" id="addRow">+ Ajouter</button>
       <button class="btn ghost small" id="toggleBulk">Coller une liste</button>
@@ -226,6 +229,7 @@
     <h2><span class="step">2</span>Tirage</h2>
     <div class="actions">
       <button class="btn primary" id="draw">🎲 Lancer le tirage</button>
+      <button class="btn ghost small hidden" id="prevBtn">↩️ Récupérer le tirage précédent</button>
     </div>
     <div class="err" id="err"></div>
     <div id="drawInfo"></div>
@@ -271,6 +275,7 @@
     <p class="hint" id="noSave" style="margin:0 0 8px">Après le tirage, tu pourras en garder une copie ici.</p>
     <details style="margin-top:12px">
       <summary style="cursor:pointer;font-weight:600">Restaurer une sauvegarde</summary>
+      <p class="hint" style="margin:8px 0 0">Tu peux aussi coller ici les messages déjà envoyés aux participants (avec leurs liens)&nbsp;: l'appli reconstruit le tirage à partir d'eux.</p>
       <textarea id="restoreText" placeholder="Colle ici le code de sauvegarde (il commence par SS1:)" style="margin-top:8px;min-height:80px"></textarea>
       <div class="actions">
         <button class="btn primary small" id="restoreBtn">Restaurer</button>
@@ -495,31 +500,58 @@
     const box = $("rows"); box.innerHTML = "";
     state.people.forEach((p,i)=>{
       const r = document.createElement("div"); r.className = "row";
-      r.innerHTML = `<input placeholder="Prénom" value="${esc(p.name)}" data-k="name">
-        <input placeholder="Nom" value="${esc(p.last)}" data-k="last">
-        <input placeholder="Groupe" value="${esc(p.family)}" data-k="family">
+      const lk = state.draw ? " readonly" : "";
+      r.innerHTML = `<input placeholder="Prénom" value="${esc(p.name)}" data-k="name"${lk}>
+        <input placeholder="Nom" value="${esc(p.last)}" data-k="last"${lk}>
+        <input placeholder="Groupe" value="${esc(p.family)}" data-k="family"${lk}>
         <input placeholder="Âge" inputmode="numeric" value="${esc(p.age)}" data-k="age">
         <input placeholder="06…" inputmode="tel" value="${esc(p.phone)}" data-k="phone">
-        <button class="x" title="Supprimer">×</button>`;
-      r.querySelectorAll("input").forEach(inp=> inp.oninput = ()=>{ p[inp.dataset.k] = inp.value; invalidate(); save(); updateCount(); });
+        <button class="x${state.draw ? " hidden" : ""}" title="Supprimer">×</button>`;
+      r.querySelectorAll("input").forEach(inp=> inp.oninput = ()=>{
+        const k = inp.dataset.k;
+        if(state.draw && k === "phone"){ // le tirage est gardé : seul le lien de cette personne est refait
+          const t = state.draw.find(x => x.name === full(p)); const rc = t ? recv(t) : null;
+          p.phone = inp.value;
+          if(t && rc !== null){ t.phone = p.phone.trim(); t.token = tok(t.name, rc); state.sent[t.name] = false; renderSend(); }
+          save(); return;
+        }
+        if(state.draw && k === "age"){ // le tirage est gardé : le lien de celui qui offre à cette personne est refait
+          p.age = inp.value;
+          const g = state.draw.find(x => recv(x) === full(p)); if(g){ g.token = tok(g.name, full(p)); renderSend(); }
+          save(); return;
+        }
+        if(state.draw) return;
+        p[k] = inp.value; invalidate(); save(); updateCount(); });
       r.querySelector(".x").onclick = ()=>{ state.people.splice(i,1); invalidate(); save(); renderRows(); };
       box.appendChild(r);
     });
-    updateCount();
+    updateCount(); lockRows();
+  }
+  function lockRows(){ // pendant un tirage : seuls le téléphone et l'âge restent modifiables
+    const on = !!state.draw;
+    $("rows").querySelectorAll('[data-k=name],[data-k=last],[data-k=family]').forEach(i => i.readOnly = on);
+    $("rows").querySelectorAll('.x').forEach(x => x.classList.toggle("hidden", on));
+    $("lockHint").classList.toggle("hidden", !on);
+    ["addRow","toggleBulk"].forEach(id => $(id).disabled = on);
+    if(on) $("bulk").classList.add("hidden");
   }
   function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
   function full(p){ return ((p.name||"").trim() + " " + (p.last||"").trim()).trim(); }
   function ageOf(n){ const p = state.people.find(q => full(q) === n); return p && /^\d{1,3}$/.test(String(p.age||"").trim()) ? String(p.age).trim() : ""; }
   function valid(){ return state.people.filter(p=>p.name.trim()); }
   function updateCount(){ const n = valid().length; $("count").textContent = n + " participant" + (n>1?"s":""); }
-  function invalidate(){ if(state.draw){ state.draw = null; state.sent = {}; renderSend(); $("drawInfo").innerHTML = '<div class="err" style="display:block">La liste a changé : le tirage précédent est annulé, relance-le.</div>'; } }
+  function keepPrev(){ // garde une copie du tirage avant de le remplacer ou de l'annuler
+    if(!state.draw) return;
+    try{ localStorage.setItem(LS + ".precedent", JSON.stringify({at:Date.now(), people:state.people, draw:state.draw, sent:state.sent, changed:state.changed, seen:state.seen||{}})); }catch(e){}
+  }
+  function invalidate(){ keepPrev(); if(state.draw){ state.draw = null; state.sent = {}; renderSend(); $("drawInfo").innerHTML = '<div class="err" style="display:block">La liste a changé : le tirage précédent est annulé, relance-le.</div>'; } }
 
   $("addRow").onclick = ()=>{ state.people.push({name:"",last:"",family:"",age:"",phone:""}); save(); renderRows(); };
   $("toggleBulk").onclick = ()=> $("bulk").classList.toggle("hidden");
   let clearArm = false;
   $("clearAll").onclick = ()=>{
     if(!clearArm){ clearArm = true; $("clearAll").textContent = "Confirmer l'effacement ?"; setTimeout(()=>{clearArm=false;$("clearAll").textContent="Tout effacer";},3000); return; }
-    state.people = [{name:"",last:"",family:"",age:"",phone:""}]; invalidate(); state.draw=null; save(); renderRows(); renderSend(); $("drawInfo").innerHTML="";
+    keepPrev(); state.people = [{name:"",last:"",family:"",age:"",phone:""}]; invalidate(); state.draw=null; save(); renderRows(); renderSend(); $("drawInfo").innerHTML="";
   };
   $("importBulk").onclick = ()=>{
     const lines = $("bulkText").value.split(/\n/).map(l=>l.trim()).filter(Boolean);
@@ -676,6 +708,7 @@
     if(big) return fail("Impossible : le groupe « " + big[0].slice(2) + " » compte plus de la moitié des participants.");
     if(state.draw && !drawArm){ drawArm = true; $("draw").textContent = "⚠️ Confirmer un nouveau tirage ?"; setTimeout(()=>{drawArm=false;$("draw").textContent="🎲 Relancer le tirage";},4000); return; }
     drawArm = false;
+    keepPrev();
     const res = doDraw(people);
     if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
     state.draw = people.map((p,i)=>{ const vid = newVid(); return {name:p.name, phone:p.phone, vid, token:tok(p.name, people[res[i]].name, vid)}; });
@@ -697,7 +730,7 @@
   }
   function linkFor(t){ const base = location.href.split("#")[0].split("?")[0]; return base + "#" + t.token; }
   function renderSend(){
-    renderSave();
+    renderSave(); lockRows();
     const card = $("sendCard"), box = $("sendList");
     if(!state.draw){ card.classList.add("hidden"); return; }
     card.classList.remove("hidden"); box.innerHTML = "";
@@ -860,7 +893,59 @@
     a.href = URL.createObjectURL(new Blob([backupCode()], {type:"text/plain"}));
     a.download = "secret-santa-sauvegarde.txt"; document.body.appendChild(a); a.click(); a.remove();
   };
+  // ---------- reconstruire un tirage à partir des messages déjà envoyés ----------
+  function rebuildFromLinks(text){
+    const toks = [...String(text).matchAll(/#(s[0-9a-f]{20,})/g)].map(m => m[1]);
+    if(!toks.length) return null;
+    const people = valid().map(p => ({name:full(p), family:(p.family||"").trim(), phone:(p.phone||"").trim()}));
+    const names = new Set(people.map(p => p.name));
+    const got = {}; // donneur -> {receiver, token, vid}
+    for(const tk of toks){ // le dernier lien d'une personne l'emporte (cas d'un « changement »)
+      const d = decode(tk); if(!d || !names.has(d.giver)) continue;
+      let r = d.receiver;
+      if(r.startsWith("~")){
+        const p = people.find(x => x.name === d.giver); let txt = unlock(r, pinOf(p.phone), d.giver);
+        for(let i=0; txt === null && i<10000; i++){ const t2 = unlock(r, String(i).padStart(4,"0"), d.giver); if(t2 !== null && names.has(t2.split("\u0001")[0])) txt = t2; }
+        if(txt === null) continue;
+        r = txt.split("\u0001")[0];
+      }
+      if(!names.has(r) || r === d.giver) continue;
+      got[d.giver] = {receiver:r, token:tk, vid:d.vid};
+    }
+    const givers = Object.keys(got);
+    if(!givers.length) return {err:"Aucun lien de ce Secret Santa n'a été reconnu dans le texte collé (vérifie que les participants sont toujours les mêmes)."};
+    const taken = {}; for(const g of givers){ if(taken[got[g].receiver]) return {err:"Deux liens donnent la même personne (" + got[g].receiver + ") : colle seulement les derniers messages envoyés."}; taken[got[g].receiver] = g; }
+    // compléter les personnes dont le lien n'a pas été retrouvé (elles n'ont pas encore reçu de lien)
+    const fam = {}; people.forEach(p => fam[p.name] = p.family ? "f:" + p.family.toLowerCase() : "solo:" + p.name);
+    const missG = people.filter(p => !got[p.name]).map(p => p.name), freeR = people.filter(p => !taken[p.name]).map(p => p.name);
+    const res = {};
+    const bt = k => { if(k === missG.length) return true; const g = missG[k];
+      for(const r of shuffle(freeR.slice())){ if(res.hasOwnProperty("@"+r) || r === g || fam[r] === fam[g]) continue; res["@"+r] = 1; res[g] = r; if(bt(k+1)) return true; delete res["@"+r]; delete res[g]; } return false; };
+    if(!bt(0)) return {err:"Liens retrouvés pour " + givers.length + " personne(s), mais impossible de compléter les autres en respectant les groupes."};
+    keepPrev();
+    state.draw = people.map(p => {
+      if(got[p.name]){
+        const o = got[p.name], d = decode(o.token);
+        const stillOk = !d.receiver.startsWith("~") || unlock(d.receiver, pinOf(p.phone), p.name) !== null;
+        const vid = o.vid || newVid();
+        const t = {name:p.name, phone:p.phone, vid, token: stillOk ? o.token : ""};
+        if(!stillOk){ state.draw = state.draw || []; t.token = tok(p.name, o.receiver, vid); }
+        t.keep = stillOk; return t;
+      }
+      const vid = newVid(); return {name:p.name, phone:p.phone, vid, token:"", newR:res[p.name]};
+    });
+    state.draw.forEach(t => { if(t.newR){ t.token = tok(t.name, t.newR, t.vid); delete t.newR; } });
+    state.sent = {}; state.changed = {};
+    state.draw.forEach(t => { if(t.keep) state.sent[t.name] = true; delete t.keep; });
+    save(); renderRows(); renderSend(); renderList();
+    $("draw").textContent = "🎲 Relancer le tirage";
+    const todo = state.draw.filter(t => !state.sent[t.name]).map(t => t.name);
+    return {ok:"✅ Tirage reconstruit : " + givers.length + " lien(s) retrouvé(s), ils restent valables." + (todo.length ? " Lien à envoyer à : " + todo.join(", ") + "." : "")};
+  }
   function restore(code, mode){
+    if(!/SS1:/.test(code)){ const rb = rebuildFromLinks(code); if(rb){ const box = $("restoreMsg");
+      box.innerHTML = rb.err ? '<div class="err" style="display:block">' + esc(rb.err) + '</div>' : '<div class="ok">' + esc(rb.ok) + '</div>';
+      if(rb.ok){ $("drawInfo").innerHTML = '<div class="ok">' + esc(rb.ok) + '</div>'; $("restoreText").value = ""; } return; } }
     const d = readBackup(code), box = $("restoreMsg");
     if(!d){ box.innerHTML = '<div class="err" style="display:block">Code de sauvegarde invalide.</div>'; return; }
     const empty = !state.draw && !state.people.some(p => (p.name||"").trim()) && !ssList.names[ssList.cur];
@@ -951,6 +1036,20 @@
   $("rows").addEventListener("input", renderList);
   saveList(); renderList(); onSave = renderList;
 
+  function prevData(){ try{ return JSON.parse(localStorage.getItem(LS + ".precedent")); }catch(e){ return null; } }
+  function showPrev(){ const pd = prevData(); $("prevBtn").classList.toggle("hidden", !(pd && pd.draw && pd.draw.length)); if(pd && pd.at) $("prevBtn").title = "Tirage du " + new Date(pd.at).toLocaleString("fr-FR"); }
+  const _save = save;
+  $("prevBtn").onclick = ()=>{
+    const pd = prevData(); if(!pd || !pd.draw) return;
+    const cur = state.draw ? {at:Date.now(), people:state.people, draw:state.draw, sent:state.sent, changed:state.changed, seen:state.seen||{}} : null;
+    state.people = pd.people; state.draw = pd.draw; state.sent = pd.sent || {}; state.changed = pd.changed || {}; state.seen = Object.assign({}, state.seen, pd.seen || {});
+    try{ if(cur) localStorage.setItem(LS + ".precedent", JSON.stringify(cur)); else localStorage.removeItem(LS + ".precedent"); }catch(e){}
+    save(); renderRows(); renderSend(); showPrev();
+    $("draw").textContent = "🎲 Relancer le tirage";
+    $("drawInfo").innerHTML = '<div class="ok">✅ Tirage précédent récupéré.</div>';
+  };
+  setInterval(showPrev, 2000);
+  showPrev();
   renderRows();
   if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
   try{ const r = sessionStorage.getItem("ss-restored"); if(r){ sessionStorage.removeItem("ss-restored"); $("drawInfo").innerHTML = '<div class="ok">✅ Sauvegarde restaurée ' + (r === "remplace" ? "à la place de l'ancien Secret Santa du même nom" : "dans un nouveau Secret Santa (voir « Mes Secret Santa » en haut)") + '. Tu peux renvoyer les liens.</div>'; } }catch(e){}
@@ -969,7 +1068,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.2"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.3"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;

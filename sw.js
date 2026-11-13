@@ -1,4 +1,4 @@
-const VERSION = "1.1.2"; // à changer à chaque publication, en même temps que APP_VERSION dans index.html
+const VERSION = "1.1.3"; // à changer à chaque publication, en même temps que APP_VERSION dans index.html
 const C = "secret-santa-v" + VERSION;
 const FILES = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png", "help.svg"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES.map(f => new Request(f, {cache: "reload"}))))); self.skipWaiting(); });
