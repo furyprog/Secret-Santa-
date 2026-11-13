@@ -180,6 +180,8 @@
       <p>Si une personne a reçu son cadeau mais n'a pas coché la case, coche toi-même <b>a reçu son cadeau</b> à côté de son nom&nbsp;: cela compte exactement comme sa propre case.</p>
       <h3>💌 Messages de remerciement</h3>
       <p>Sur sa page cadeau, chacun peut écrire un petit mot dans <b>Merci pour mon cadeau</b>. Seule la personne qui lui a offert son cadeau le voit, sur sa propre page. Personne ne découvre qui lui a offert son cadeau, et toi non plus&nbsp;: le serveur ne reçoit que le message et un code anonyme.</p>
+      <h3>🎄 Rappel avant la remise</h3>
+      <p>Si une date de remise est indiquée, le bouton <b>Rappel avant la remise</b> (sous la liste d'envoi) prépare un seul message WhatsApp pour le groupe, avec le nombre de jours restants calculé automatiquement (« Plus que 12 jours… », « C'est demain… », « C'est aujourd'hui… », ou « La remise a commencé » pendant une période). Il ne révèle rien et disparaît une fois la remise passée.</p>
       <p>Le bouton <b>Prévenir tout le monde des messages de remerciement</b> prépare un seul message WhatsApp, à envoyer au groupe ou aux contacts de ton choix, qui invite chacun à rouvrir son lien. Il ne révèle rien.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
@@ -283,6 +285,7 @@
       <button class="btn ghost small" id="giftShow">🔎 Voir qui n'a pas offert</button>
       <p class="hint hidden" id="giftWhen" style="margin:6px 0 0"></p>
       <div id="giftList" style="margin-top:8px"></div>
+      <a class="btn wa small hidden" id="remindWa" href="#" target="_blank" rel="noopener" style="margin-top:8px">🎄 Rappel avant la remise</a>
       <a class="btn wa small" id="thanksWa" href="#" target="_blank" rel="noopener" style="margin-top:8px">💌 Prévenir tout le monde des messages de remerciement</a>
     </div>
     <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
@@ -1011,6 +1014,21 @@
   // cadeaux reçus : seulement un compte ; après la date de remise, un bouton montre ceux qui n'ont pas offert (jamais tous les binômes)
   function lastDay(){ const a = state.dateFrom, b = state.dateTo; return [a, b].filter(Boolean).sort().pop() || ""; }
   function giftOpen(){ const l = lastDay(); if(!l) return true; const t = new Date(), d = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0"); return d > l; }
+  function remindText(){ // rappel pour tout le monde, calculé le jour même ; rien si pas de date ou remise passée
+    const ds = [state.dateFrom, state.dateTo].filter(Boolean).sort(); if(!ds.length) return "";
+    const day = v => { const [y,m,d] = v.split("-").map(Number); return new Date(y, m-1, d); };
+    const t = new Date(), today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    const n = Math.round((day(ds[0]) - today) / 864e5), end = Math.round((day(ds[ds.length-1]) - today) / 864e5);
+    if(end < 0) return "";
+    const w = whenText();
+    const line = n > 1 ? "🎄 Plus que " + n + " jours avant la remise des cadeaux (" + w + "), pensez à votre cadeau ! 🎁"
+      : n === 1 ? "🎄 C'est demain la remise des cadeaux (" + w + "), pensez à votre cadeau ! 🎁"
+      : n === 0 ? "🎄 C'est aujourd'hui la remise des cadeaux, pensez à votre cadeau ! 🎁"
+      : end === 0 ? "🎄 C'est aujourd'hui le dernier jour de la remise des cadeaux, pensez à votre cadeau ! 🎁"
+      : "🎄 La remise des cadeaux a commencé (" + w + "), pensez à votre cadeau ! 🎁";
+    return "🎅 " + ssTitle() + " :\n\n" + line;
+  }
+  $("remindWa").onclick = ()=>{ const m = remindText(); if(!m) return false; $("remindWa").href = "https://wa.me/?text=" + encodeURIComponent(m); };
   let giftArm = false;
   function renderGifts(){
     const box = $("giftBox"); if(!state.draw){ box.classList.add("hidden"); return; }
@@ -1022,6 +1040,7 @@
     $("giftWhen").textContent = open ? "" : "Le bouton sera disponible le lendemain de la date de remise (" + fmtDate(lastDay()) + ").";
     $("giftWhen").classList.toggle("hidden", open);
     if(!open) $("giftList").innerHTML = "";
+    const rm = remindText(); $("remindWa").classList.toggle("hidden", !rm);
     // un seul message pour tout le monde (WhatsApp : tu choisis le groupe ou les contacts), sans rien révéler
     $("thanksWa").href = "https://wa.me/?text=" + encodeURIComponent("🎅 " + ssTitle() + " :\n\n💌 Vous avez peut-être reçu un mot de remerciement ! Rouvrez votre lien Secret Santa pour le découvrir.");
   }
@@ -1354,7 +1373,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.15"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.16"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
