@@ -72,12 +72,16 @@
 
 <!-- ========== ORGANISATEUR ========== -->
 <div id="admin" class="wrap">
-  <h1>🎅 Secret Santa</h1>
+  <h1>🎅 Secret Santa<span id="groupTitle"></span></h1>
   <p class="sub">Tirage au sort avec exclusions par famille. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
 
   <div class="card">
     <h2><span class="step">1</span>Participants</h2>
     <p class="hint" style="margin:0 0 10px">Deux personnes de la <b>même famille</b> (même nom dans la colonne Famille) ne pourront pas se tirer. Laisse Famille vide si la personne n'a pas de restriction.</p>
+    <div style="margin:0 0 14px">
+      <label for="group">Précision après « Secret Santa » (facultatif)</label>
+      <input id="group" type="text" placeholder="ex. de l'association Les Amis, de la classe 2…">
+    </div>
     <div style="margin:0 0 14px;max-width:260px">
       <label for="budget">Montant maximum du cadeau (€)</label>
       <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
@@ -149,6 +153,7 @@
 <div id="reveal" class="reveal hidden">
   <div class="snow" id="snow"></div>
   <div class="box">
+    <p id="groupLine" class="hidden" style="font-family:Fraunces,serif;font-size:20px;font-weight:600;color:#ffe7a8;margin:0"></p>
     <h1 id="hello">🎅 Secret Santa</h1>
     <p id="intro">Tu dois offrir un cadeau à…</p>
     <div class="gift" id="gift" title="Ouvrir">🎁</div>
@@ -168,8 +173,8 @@
   const $ = id => document.getElementById(id);
 
   // ---------- encodage du lien ----------
-  function encode(giver, receiver, budget, org){
-    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||""));
+  function encode(giver, receiver, budget, org, group){
+    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/"));
     let sum = 0, hex = "";
     bytes.forEach((b,i)=>{ sum = (sum + b) & 255; const x = b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); hex += x.toString(16).padStart(2,"0"); });
     return "s" + hex + sum.toString(16).padStart(2,"0");
@@ -181,7 +186,7 @@
     for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
-    return (parts.length >= 2 && parts.length <= 4) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||""} : null;
+    return (parts.length >= 2 && parts.length <= 5) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||""} : null;
   }
 
   // ---------- mode révélation ----------
@@ -192,6 +197,7 @@
     $("admin").classList.add("hidden");
     $("reveal").classList.remove("hidden");
     $("hello").textContent = "🎅 Bonjour " + d.giver + " !";
+    if(d.group){ $("groupLine").textContent = "Secret Santa " + d.group; $("groupLine").classList.remove("hidden"); document.title = "Secret Santa " + d.group; }
     $("target").textContent = d.receiver;
     const open = ()=>{ $("gift").classList.add("hidden"); $("tap").classList.add("hidden");
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
@@ -208,7 +214,7 @@
   window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
 
   // ---------- état organisateur ----------
-  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], budget:"", orgPhone:"", draw:null, sent:{}, changed:{}, confirmed:{} };
+  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], budget:"", orgPhone:"", group:"", draw:null, sent:{}, changed:{}, confirmed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
   const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} };
 
@@ -247,7 +253,11 @@
   };
 
   // ---------- budget / organisateur ----------
-  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone)); }
+  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone), state.group); }
+  function ssTitle(){ return "Secret Santa" + (state.group ? " " + state.group : ""); }
+  function showGroup(){ $("groupTitle").textContent = state.group ? " " + state.group : ""; }
+  $("group").value = state.group || ""; showGroup();
+  $("group").oninput = ()=>{ state.group = $("group").value.trim(); showGroup(); settingsChanged("La précision a changé"); };
   $("budget").value = state.budget || "";
   $("orgPhone").value = state.orgPhone || "";
   $("orgPhone").oninput = ()=>{ state.orgPhone = $("orgPhone").value.trim(); settingsChanged("Ton numéro a changé"); };
@@ -367,8 +377,8 @@
       const bud = state.budget ? "\n💶 Budget maximum : " + state.budget + " €\n" : "";
       const ch = state.changed && state.changed[t.name];
       const msg = ch
-        ? "🎅 Secret Santa : changement !\n\nBonjour " + t.name + ", suite à un désistement, la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
-        : "🎅 Secret Santa !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
+        ? "🎅 " + ssTitle() + " : changement !\n\nBonjour " + t.name + ", suite à un désistement, la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
+        : "🎅 " + ssTitle() + " !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
       const num = waNumber(t.phone);
       const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
       const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -430,7 +440,7 @@
 
   // ---------- sauvegarde / restauration ----------
   function backupCode(){
-    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed}));
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group}));
     let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
     return "SS1:" + btoa(bin);
   }
@@ -447,7 +457,7 @@
     const has = !!state.draw;
     $("saveBox").classList.toggle("hidden", !has); $("noSave").classList.toggle("hidden", has);
     if(has){
-      const msg = "🎅 Sauvegarde Secret Santa (ne pas modifier) :\n\n" + backupCode() + "\n\nPour restaurer : " + location.href.split("#")[0];
+      const msg = "🎅 Sauvegarde " + ssTitle() + " (ne pas modifier) :\n\n" + backupCode() + "\n\nPour restaurer : " + location.href.split("#")[0];
       $("saveWa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
     }
   }
@@ -463,7 +473,7 @@
   function restore(code){
     const d = readBackup(code), box = $("restoreMsg");
     if(!d){ box.innerHTML = '<div class="err" style="display:block">Code de sauvegarde invalide.</div>'; return; }
-    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
+    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup(); $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
     $("draw").textContent = state.draw ? "🎲 Relancer le tirage" : "🎲 Lancer le tirage";
     $("drawInfo").innerHTML = state.draw ? '<div class="ok">✅ Tirage restauré. Tu peux renvoyer les liens.</div>' : "";
