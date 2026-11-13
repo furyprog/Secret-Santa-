@@ -450,7 +450,8 @@
     $("hello").textContent = "🎅 Bonjour,\n" + (d.first || d.giver) + " !";
     if(d.group){ $("groupLine").textContent = "Secret Santa " + d.group; $("groupLine").classList.remove("hidden"); document.title = "Secret Santa " + d.group; }
     let opening = false;
-    const ready = ()=>{ $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
+    let readyAt = 0;
+    const ready = ()=>{ readyAt = Date.now(); $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
     if(d.receiver.startsWith("~")){ // lien protégé : il faut les 4 derniers chiffres du téléphone
       $("gift").classList.add("hidden"); $("tap").classList.add("hidden"); $("pinBox").classList.remove("hidden");
       const lockField = d.receiver;
@@ -464,7 +465,7 @@
       $("pin").onkeydown = e => { if(e.key === "Enter") check(); };
       $("pin").oninput = ()=>{ $("pinErr").classList.add("hidden"); };
     } else ready();
-    const open = ()=>{ if(opening) return; opening = true; $("tap").classList.add("hidden");
+    const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau opening = true; $("tap").classList.add("hidden");
       jingle(); $("gift").classList.add("opening");
       setTimeout(confetti, 1000);
       setTimeout(reveal, 1350); };
@@ -962,7 +963,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.18"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.19"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
