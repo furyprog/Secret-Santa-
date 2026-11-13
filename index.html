@@ -178,6 +178,9 @@
       <h3>🎁 Cadeaux reçus</h3>
       <p>Sur sa page cadeau, chacun peut cocher <b>J'ai reçu mon cadeau</b>. Sous la liste d'envoi, tu vois combien de personnes l'ont coché, sans savoir qui offre à qui. Le lendemain de la date de remise, le bouton <b>Voir qui n'a pas offert</b> affiche seulement les personnes dont le destinataire n'a pas coché la case (par exemple « Paul n'a pas offert à Marie »)&nbsp;: les autres binômes restent cachés. Sans date de remise, le bouton est disponible tout de suite.</p>
       <p>Si une personne a reçu son cadeau mais n'a pas coché la case, coche toi-même <b>a reçu son cadeau</b> à côté de son nom&nbsp;: cela compte exactement comme sa propre case.</p>
+      <h3>💌 Messages de remerciement</h3>
+      <p>Sur sa page cadeau, chacun peut écrire un petit mot dans <b>Merci pour mon cadeau</b>. Seule la personne qui lui a offert son cadeau le voit, sur sa propre page. Personne ne découvre qui lui a offert son cadeau, et toi non plus&nbsp;: le serveur ne reçoit que le message et un code anonyme.</p>
+      <p>Le bouton <b>Prévenir tout le monde des messages de remerciement</b> prépare un seul message WhatsApp, à envoyer au groupe ou aux contacts de ton choix, qui invite chacun à rouvrir son lien. Il ne révèle rien.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -280,6 +283,7 @@
       <button class="btn ghost small" id="giftShow">🔎 Voir qui n'a pas offert</button>
       <p class="hint hidden" id="giftWhen" style="margin:6px 0 0"></p>
       <div id="giftList" style="margin-top:8px"></div>
+      <a class="btn wa small" id="thanksWa" href="#" target="_blank" rel="noopener" style="margin-top:8px">💌 Prévenir tout le monde des messages de remerciement</a>
     </div>
     <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
       <button class="btn ghost small" id="toggleLate">+ Ajouter un retardataire</button>
@@ -342,6 +346,8 @@
       <p>Quand tu as reçu ton cadeau, rouvre ton lien et coche <b>J'ai reçu mon cadeau</b>&nbsp;: l'organisateur saura qu'il a bien été offert.</p>
       <h3>⏳ Compte à rebours</h3>
       <p>Si une date de remise a été indiquée, un compte à rebours s'affiche sous la date. Pour une période (du … au …), il compte jusqu'au premier jour, puis indique que la remise est en cours jusqu'au dernier jour.</p>
+      <h3>💌 Merci pour mon cadeau</h3>
+      <p>Après avoir reçu ton cadeau, écris un petit mot dans <b>Merci pour mon cadeau</b> puis appuie sur <b>Envoyer</b>. La personne qui te l'a offert le verra sur sa page, sans que tu saches qui c'est. Et si la personne à qui tu offres t'écrit un mot, il s'affiche sur ta page sous le nom.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -365,6 +371,7 @@
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
     <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="margin-top:6px"></div></div>
+    <div id="hisThanks" class="wishBox hidden"><b>💌 Un message de <span id="hisThanksName"></span> pour toi</b><div id="hisThanksTxt" style="white-space:pre-line;margin-top:6px"></div></div>
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
@@ -374,6 +381,13 @@
       <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600;font-size:17px;color:#ffe7a8;margin:0"><input type="checkbox" id="gotChk" style="width:22px;height:22px;flex:none"> 🎁 J'ai reçu mon cadeau</label>
       <p style="font-size:13px;margin:6px 0 0">Coche cette case quand tu as reçu ton cadeau : l'organisateur saura qu'il a bien été offert.</p>
       <p id="gotMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
+    </div>
+    <div id="myThanks" class="wishBox hidden" style="margin-top:26px">
+      <b>💌 Merci pour mon cadeau</b>
+      <textarea id="myThanksTxt" maxlength="1000" rows="3" placeholder="Ex. : Merci beaucoup, il me plaît énormément !"></textarea>
+      <p style="font-size:13px;margin:4px 0 8px">La personne qui t'a offert ton cadeau verra ce petit mot sur sa page, sans que tu saches qui c'est.</p>
+      <button class="btn" id="myThanksSave" style="background:#f3cf6b;color:#5a1010">Envoyer</button>
+      <p id="myThanksMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
     </div>
     <div id="myWish" class="wishBox hidden" style="margin-top:26px">
       <b>📝 Saisis ici les cadeaux qui te feraient plaisir</b>
@@ -434,6 +448,9 @@
   // idées cadeaux : rangées sous un code calculé à partir du nom et des infos communes du tirage (aucun nom envoyé)
   function wishKey(name, d){ const base = "souhaits|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
     return "w" + h32(base).toString(36).padStart(7,"0") + h32("SW2|" + base).toString(36).padStart(7,"0"); }
+  // petit mot de remerciement : même principe, autre code (le destinataire écrit, celui qui offre lit)
+  function thanksKey(name, d){ const base = "merci|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+    return "m" + h32(base).toString(36).padStart(7,"0") + h32("SM2|" + base).toString(36).padStart(7,"0"); }
   function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
   function h32(str){ let h = 2166136261; for(const c of new TextEncoder().encode(str)){ h ^= c; h = Math.imul(h, 16777619) >>> 0; } return h; }
   function stream(seed, n){ let x = seed || 1; const out = []; for(let i=0;i<n;i++){ x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out.push(x & 255); } return out; }
@@ -600,8 +617,15 @@
           box.appendChild(ul); }
         $("hisWish").classList.remove("hidden");
       }).catch(()=>{});
-      loadHis(); setInterval(loadHis, 60000);
-      document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) loadHis(); });
+      // petit mot laissé par la personne à qui j'offre
+      const thKey = thanksKey(d.receiver, d);
+      const loadThanks = ()=> fetch(API + "/souhaits?k=" + thKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
+        const t = (j.texte || "").trim();
+        $("hisThanksName").textContent = d.receiver; $("hisThanksTxt").textContent = t;
+        $("hisThanks").classList.toggle("hidden", !t);
+      }).catch(()=>{});
+      loadHis(); loadThanks(); setInterval(()=>{ loadHis(); loadThanks(); }, 60000);
+      document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ loadHis(); loadThanks(); } });
       // mes propres idées (seulement si le lien a un code anonyme)
       if(!d.vid) return;
       // case « J'ai reçu mon cadeau »
@@ -612,6 +636,17 @@
         fetch(API + "/recu", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({id:d.vid, recu:v})})
           .then(r => { if(!r.ok) throw 0; $("gotMsg").textContent = v ? "✅ Merci, c'est noté !" : "✅ C'est noté."; })
           .catch(()=>{ $("gotChk").checked = !v; $("gotMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
+      };
+      // mon petit mot pour la personne qui m'a offert mon cadeau
+      const myThKey = thanksKey(d.giver, d);
+      $("myThanks").classList.remove("hidden");
+      fetch(API + "/souhaits?k=" + myThKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.texte && !$("myThanksTxt").value) $("myThanksTxt").value = j.texte; }).catch(()=>{});
+      $("myThanksTxt").oninput = ()=>{ $("myThanksMsg").textContent = ""; };
+      $("myThanksSave").onclick = ()=>{
+        $("myThanksMsg").textContent = "Envoi…";
+        fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myThKey, id:d.vid, texte:$("myThanksTxt").value.trim()})})
+          .then(r => { $("myThanksMsg").textContent = r.ok ? "✅ Envoyé" : "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; })
+          .catch(()=>{ $("myThanksMsg").textContent = "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; });
       };
       const myKey = wishKey(d.giver, d);
       const rows = $("myWishRows");
@@ -987,6 +1022,8 @@
     $("giftWhen").textContent = open ? "" : "Le bouton sera disponible le lendemain de la date de remise (" + fmtDate(lastDay()) + ").";
     $("giftWhen").classList.toggle("hidden", open);
     if(!open) $("giftList").innerHTML = "";
+    // un seul message pour tout le monde (WhatsApp : tu choisis le groupe ou les contacts), sans rien révéler
+    $("thanksWa").href = "https://wa.me/?text=" + encodeURIComponent("🎅 " + ssTitle() + " :\n\n💌 Vous avez peut-être reçu un mot de remerciement ! Rouvrez votre lien Secret Santa pour le découvrir.");
   }
   $("giftShow").onclick = ()=>{
     if(!giftOpen()) return;
@@ -1317,7 +1354,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.14"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.15"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
