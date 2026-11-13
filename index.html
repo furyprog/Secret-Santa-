@@ -772,7 +772,7 @@
       const okRead = r.ok && t.includes(id);
       lines.push((okRead ? "✅" : "❌") + " 2. Lecture des ouvertures : réponse " + r.status + " " + t.slice(0,150));
     }catch(e){ lines.push("❌ 2. Lecture des ouvertures : " + e.message + " (serveur injoignable ou réponse bloquée par le navigateur)"); }
-    lines.push("Page : " + location.origin + " · Version " + (document.querySelector(".appVersion")||{}).textContent);
+    lines.push("Page : " + location.origin + " · " + (document.querySelector(".appVersion")||{}).textContent);
     show();
   };
   document.addEventListener("visibilitychange", refreshSeen);
@@ -963,7 +963,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.19"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.0"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
