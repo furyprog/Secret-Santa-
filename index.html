@@ -110,6 +110,7 @@
     <h2><span class="step">3</span>Envoi sur WhatsApp</h2>
     <p class="hint" style="margin:0 0 8px">Appuie sur <b>Envoyer</b> pour chaque personne&nbsp;: WhatsApp s'ouvre avec le message prêt, tu n'as plus qu'à l'envoyer. <b>N'ouvre pas les liens toi-même</b>, sinon tu découvriras le résultat.</p>
     <a class="btn wa" id="nextBtn" href="#" target="_blank" rel="noopener" style="width:100%;justify-content:center;font-size:17px;padding:14px;margin-bottom:6px">📨 Envoyer au suivant</a>
+    <a class="btn ghost small" id="nextSms" href="#" style="width:100%;justify-content:center;margin-bottom:6px">✉️ Pas de WhatsApp ? Envoyer par SMS</a>
     <p class="hint" id="nextInfo" style="text-align:center;margin:0 0 12px"></p>
     <div id="sendList"></div>
   </div>
@@ -344,9 +345,9 @@
     card.classList.remove("hidden"); box.innerHTML = "";
     renderNext();
     state.draw.forEach(t=>{
-      const {msg, wa, num, ch} = msgFor(t);
+      const {msg, wa, num, ch, sms} = msgFor(t);
       const row = document.createElement("div"); row.className = "send" + (state.sent[t.name] ? " done" : "") + (ch ? " changed" : "");
-      row.innerHTML = ROW(t, wa, num, ch);
+      row.innerHTML = ROW(t, wa, num, ch, sms);
       bindRow(row, t, msg);
       box.appendChild(row);
     });
@@ -360,10 +361,13 @@
         : "🎅 Secret Santa !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
       const num = waNumber(t.phone);
       const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
-      return {msg, wa, num, ch};
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const sms = "sms:" + (num ? "+" + num : "") + (ios ? "&" : "?") + "body=" + encodeURIComponent(msg);
+      return {msg, wa, num, ch, sms};
   }
-  function ROW(t, wa, num, ch){ return `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}</small></div>
+  function ROW(t, wa, num, ch, sms){ return `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}</small></div>
         <a class="btn wa small" href="${wa}" target="_blank" rel="noopener">Envoyer</a>
+        <a class="btn ghost small sms" href="${sms}">SMS</a>
         <button class="btn ghost small cp">Copier</button>
         <label class="chk"><input type="checkbox" ${state.sent[t.name]?"checked":""}> envoyé</label>
         <button class="btn ghost small rm">Retirer</button>`; }
@@ -371,6 +375,7 @@
       const cb = row.querySelector("input");
       const mark = v => { state.sent[t.name] = v; cb.checked = v; row.classList.toggle("done", v); save(); renderNext(); };
       row.querySelector(".wa").addEventListener("click", ()=> mark(true));
+      row.querySelector(".sms").addEventListener("click", ()=> mark(true));
       cb.onchange = ()=> mark(cb.checked);
       let rmArm = false;
       row.querySelector(".rm").onclick = (e)=>{
@@ -392,12 +397,17 @@
     todo.sort((a,b)=> (state.changed[b.name]?1:0) - (state.changed[a.name]?1:0));
     nextT = todo[0] || null;
     const btn = $("nextBtn");
-    if(!nextT){ btn.classList.add("hidden"); $("nextInfo").textContent = "✅ Tout le monde a reçu son message."; return; }
-    btn.classList.remove("hidden");
-    btn.href = msgFor(nextT).wa;
+    if(!nextT){ btn.classList.add("hidden"); $("nextSms").classList.add("hidden"); $("nextInfo").textContent = "✅ Tout le monde a reçu son message."; return; }
+    btn.classList.remove("hidden"); $("nextSms").classList.remove("hidden");
+    btn.href = msgFor(nextT).wa; $("nextSms").href = msgFor(nextT).sms;
     btn.textContent = "📨 Envoyer à " + nextT.name;
     $("nextInfo").textContent = "Encore " + todo.length + " message" + (todo.length>1?"s":"") + " à envoyer. Après l'envoi dans WhatsApp, reviens ici et rappuie sur le bouton.";
   }
+  $("nextSms").addEventListener("click", ()=>{
+    if(!nextT) return;
+    const name = nextT.name;
+    setTimeout(()=>{ state.sent[name] = true; save(); renderSend(); }, 300);
+  });
   $("nextBtn").addEventListener("click", ()=>{
     if(!nextT) return;
     const name = nextT.name;
