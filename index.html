@@ -104,6 +104,28 @@
     <p class="hint" style="margin:0 0 8px">Appuie sur <b>Envoyer</b> pour chaque personne&nbsp;: WhatsApp s'ouvre avec le message prêt, tu n'as plus qu'à l'envoyer. <b>N'ouvre pas les liens toi-même</b>, sinon tu découvriras le résultat.</p>
     <div id="sendList"></div>
   </div>
+
+  <div class="card" id="saveCard">
+    <h2>💾 Sauvegarde</h2>
+    <div id="saveBox" class="hidden">
+      <p class="hint" style="margin:0 0 8px">Garde une copie du tirage en lieu sûr. Le code est illisible&nbsp;: tu peux le conserver sans connaître le résultat.</p>
+      <div class="actions">
+        <a class="btn wa small" id="saveWa" href="#" target="_blank" rel="noopener">M'envoyer la sauvegarde sur WhatsApp</a>
+        <button class="btn ghost small" id="saveCopy">Copier le code</button>
+        <button class="btn ghost small" id="saveFile">Télécharger un fichier</button>
+      </div>
+    </div>
+    <p class="hint" id="noSave" style="margin:0 0 8px">Après le tirage, tu pourras en garder une copie ici.</p>
+    <details style="margin-top:12px">
+      <summary style="cursor:pointer;font-weight:600">Restaurer une sauvegarde</summary>
+      <textarea id="restoreText" placeholder="Colle ici le code de sauvegarde (il commence par SS1:)" style="margin-top:8px;min-height:80px"></textarea>
+      <div class="actions">
+        <button class="btn primary small" id="restoreBtn">Restaurer</button>
+        <label class="btn ghost small" style="margin:0;color:var(--ink)">Ouvrir un fichier<input type="file" id="restoreFile" accept=".txt,text/plain" class="hidden"></label>
+      </div>
+      <div id="restoreMsg"></div>
+    </details>
+  </div>
 </div>
 
 <!-- ========== RÉVÉLATION ========== -->
@@ -261,6 +283,7 @@
   }
   function linkFor(t){ const base = location.href.split("#")[0].split("?")[0]; return base + "#" + t.token; }
   function renderSend(){
+    renderSave();
     const card = $("sendCard"), box = $("sendList");
     if(!state.draw){ card.classList.add("hidden"); return; }
     card.classList.remove("hidden"); box.innerHTML = "";
@@ -286,6 +309,50 @@
       box.appendChild(row);
     });
   }
+
+  // ---------- sauvegarde / restauration ----------
+  function backupCode(){
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent}));
+    let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
+    return "SS1:" + btoa(bin);
+  }
+  function readBackup(code){
+    const m = String(code).match(/SS1:([A-Za-z0-9+/=]+)/); if(!m) return null;
+    try{
+      const bin = atob(m[1]); const bytes = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255);
+      const d = JSON.parse(new TextDecoder().decode(bytes));
+      return (d && Array.isArray(d.people)) ? d : null;
+    }catch(e){ return null; }
+  }
+  function renderSave(){
+    const has = !!state.draw;
+    $("saveBox").classList.toggle("hidden", !has); $("noSave").classList.toggle("hidden", has);
+    if(has){
+      const msg = "🎅 Sauvegarde Secret Santa (ne pas modifier) :\n\n" + backupCode() + "\n\nPour restaurer : " + location.href.split("#")[0];
+      $("saveWa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
+    }
+  }
+  $("saveCopy").onclick = async (e)=>{
+    try{ await navigator.clipboard.writeText(backupCode()); e.target.textContent = "Copié ✓"; }catch(_){ e.target.textContent = "Échec"; }
+    setTimeout(()=> e.target.textContent = "Copier le code", 1500);
+  };
+  $("saveFile").onclick = ()=>{
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([backupCode()], {type:"text/plain"}));
+    a.download = "secret-santa-sauvegarde.txt"; document.body.appendChild(a); a.click(); a.remove();
+  };
+  function restore(code){
+    const d = readBackup(code), box = $("restoreMsg");
+    if(!d){ box.innerHTML = '<div class="err" style="display:block">Code de sauvegarde invalide.</div>'; return; }
+    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; save();
+    renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
+    $("draw").textContent = state.draw ? "🎲 Relancer le tirage" : "🎲 Lancer le tirage";
+    $("drawInfo").innerHTML = state.draw ? '<div class="ok">✅ Tirage restauré. Tu peux renvoyer les liens.</div>' : "";
+    box.innerHTML = '<div class="ok">✅ Sauvegarde restaurée.</div>';
+  }
+  $("restoreBtn").onclick = ()=> restore($("restoreText").value);
+  $("restoreFile").onchange = async (e)=>{ const f = e.target.files[0]; if(f) restore(await f.text()); e.target.value = ""; };
 
   if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
   renderRows();
