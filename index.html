@@ -49,6 +49,9 @@
   .chk{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
   .chk input{width:auto}
   .small{font-size:13px;padding:7px 10px}
+  .send.changed{background:#fff4dc;border-radius:10px;padding:10px 8px;margin:4px -8px}
+  .tag{display:inline-block;background:var(--gold);color:#fff;border-radius:6px;font-size:11px;font-weight:600;padding:1px 6px;margin-left:4px}
+  .rm{color:var(--red)!important}
   .hidden{display:none!important}
   /* Reveal */
   .reveal{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
@@ -75,6 +78,10 @@
   <div class="card">
     <h2><span class="step">1</span>Participants</h2>
     <p class="hint" style="margin:0 0 10px">Deux personnes de la <b>même famille</b> (même nom dans la colonne Famille) ne pourront pas se tirer. Laisse Famille vide si la personne n'a pas de restriction.</p>
+    <div style="margin:0 0 14px;max-width:260px">
+      <label for="budget">Montant maximum du cadeau (€)</label>
+      <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
+    </div>
     <div class="row head"><span>Prénom</span><span>Famille</span><span>Téléphone</span><span></span></div>
     <div id="rows"></div>
     <div class="actions">
@@ -137,6 +144,7 @@
     <div class="gift" id="gift" title="Ouvrir">🎁</div>
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
+    <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
   </div>
 </div>
@@ -148,8 +156,8 @@
   const $ = id => document.getElementById(id);
 
   // ---------- encodage du lien ----------
-  function encode(giver, receiver){
-    const bytes = new TextEncoder().encode(giver + "|" + receiver);
+  function encode(giver, receiver, budget){
+    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||""));
     let sum = 0, hex = "";
     bytes.forEach((b,i)=>{ sum = (sum + b) & 255; const x = b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); hex += x.toString(16).padStart(2,"0"); });
     return "s" + hex + sum.toString(16).padStart(2,"0");
@@ -161,7 +169,7 @@
     for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
-    return parts.length === 2 ? {giver:parts[0], receiver:parts[1]} : null;
+    return (parts.length === 2 || parts.length === 3) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||""} : null;
   }
 
   // ---------- mode révélation ----------
@@ -174,7 +182,8 @@
     $("hello").textContent = "🎅 Bonjour " + d.giver + " !";
     $("target").textContent = d.receiver;
     const open = ()=>{ $("gift").classList.add("hidden"); $("tap").classList.add("hidden");
-      $("target").classList.remove("hidden"); $("secret").classList.remove("hidden"); };
+      $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
+      if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); } };
     $("gift").onclick = open;
     const s = $("snow");
     for(let i=0;i<30;i++){ const f=document.createElement("span"); f.textContent="❄";
@@ -186,7 +195,7 @@
   window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
 
   // ---------- état organisateur ----------
-  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], shareUrl:"", draw:null, sent:{} };
+  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], budget:"", draw:null, sent:{}, changed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
   const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} };
 
@@ -223,6 +232,47 @@
     state.people = state.people.filter(p=>p.name.trim()).concat(list);
     invalidate(); save(); renderRows(); $("bulkText").value=""; $("bulk").classList.add("hidden");
   };
+
+  // ---------- budget ----------
+  $("budget").value = state.budget || "";
+  $("budget").oninput = ()=>{
+    state.budget = $("budget").value.trim();
+    if(state.draw){
+      state.draw.forEach(t=>{ const d = decode(t.token); if(d) t.token = encode(t.name, d.receiver, state.budget); });
+      state.sent = {};
+      $("drawInfo").innerHTML = '<div class="err" style="display:block">Le montant a changé : le tirage reste le même, mais renvoie les liens à tout le monde pour qu\'ils voient le nouveau montant.</div>';
+      renderSend();
+    }
+    save();
+  };
+
+  // ---------- désistement ----------
+  function withdraw(name){
+    const D = state.draw, fam = {};
+    state.people.forEach((p,i)=>{ const f = (p.family||"").trim().toLowerCase(); fam[p.name.trim()] = f ? "f:"+f : "solo:"+p.name.trim(); });
+    if(D.length <= 3) return "Il faut au moins 3 participants restants.";
+    const tgt = t => decode(t.token).receiver;
+    const ok = (g, r) => g !== r && fam[g] !== fam[r];
+    const G = D.find(t => tgt(t) === name), X = D.find(t => t.name === name);
+    const R = tgt(X);
+    const changes = {};
+    if(ok(G.name, R)) changes[G.name] = R;
+    else {
+      const others = shuffle(D.filter(t => t !== X && t !== G));
+      const A = others.find(a => { const B = tgt(a); return B !== name && ok(G.name, B) && ok(a.name, R); });
+      if(!A) return "Impossible de réattribuer sans refaire un tirage complet.";
+      changes[G.name] = tgt(A); changes[A.name] = R;
+    }
+    state.draw = D.filter(t => t !== X);
+    state.draw.forEach(t => { if(changes[t.name]){ t.token = encode(t.name, changes[t.name], state.budget); state.changed[t.name] = true; state.sent[t.name] = false; } });
+    delete state.sent[name]; delete state.changed[name];
+    state.people = state.people.filter(p => p.name.trim() !== name);
+    save(); renderRows();
+    const who = Object.keys(changes);
+    $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(name) + ' a été retiré(e). ' + (who.length === 1 ? '1 personne doit' : who.length + ' personnes doivent') + ' recevoir un nouveau lien : ' + who.map(esc).join(" et ") + ' (en jaune ci-dessous).</div>';
+    renderSend();
+    return null;
+  }
 
   // ---------- tirage ----------
   function famKey(p, i){ const f = p.family.trim().toLowerCase(); return f ? "f:" + f : "solo:" + i; }
@@ -265,8 +315,8 @@
     drawArm = false;
     const res = doDraw(people);
     if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
-    state.draw = people.map((p,i)=>({name:p.name, phone:p.phone, token:encode(p.name, people[res[i]].name)}));
-    state.sent = {}; save();
+    state.draw = people.map((p,i)=>({name:p.name, phone:p.phone, token:encode(p.name, people[res[i]].name, state.budget)}));
+    state.sent = {}; state.changed = {}; save();
     $("draw").textContent = "🎲 Relancer le tirage";
     $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les familles. Le résultat est caché dans les liens.</div>';
     renderSend();
@@ -289,18 +339,29 @@
     card.classList.remove("hidden"); box.innerHTML = "";
     state.draw.forEach(t=>{
       const url = linkFor(t);
-      const msg = "🎅 Secret Santa !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n\n" + url;
+      const bud = state.budget ? "\n💶 Budget maximum : " + state.budget + " €\n" : "";
+      const ch = state.changed && state.changed[t.name];
+      const msg = ch
+        ? "🎅 Secret Santa : changement !\n\nBonjour " + t.name + ", suite à un désistement, la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
+        : "🎅 Secret Santa !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
       const num = waNumber(t.phone);
       const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
-      const row = document.createElement("div"); row.className = "send" + (state.sent[t.name] ? " done" : "");
-      row.innerHTML = `<div class="who"><b>${esc(t.name)}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}</small></div>
+      const row = document.createElement("div"); row.className = "send" + (state.sent[t.name] ? " done" : "") + (ch ? " changed" : "");
+      row.innerHTML = `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}</small></div>
         <a class="btn wa small" href="${wa}" target="_blank" rel="noopener">Envoyer</a>
         <button class="btn ghost small cp">Copier</button>
-        <label class="chk"><input type="checkbox" ${state.sent[t.name]?"checked":""}> envoyé</label>`;
+        <label class="chk"><input type="checkbox" ${state.sent[t.name]?"checked":""}> envoyé</label>
+        <button class="btn ghost small rm">Retirer</button>`;
       const cb = row.querySelector("input");
       const mark = v => { state.sent[t.name] = v; cb.checked = v; row.classList.toggle("done", v); save(); };
       row.querySelector(".wa").addEventListener("click", ()=> mark(true));
       cb.onchange = ()=> mark(cb.checked);
+      let rmArm = false;
+      row.querySelector(".rm").onclick = (e)=>{
+        if(!rmArm){ rmArm = true; e.target.textContent = "Confirmer ?"; setTimeout(()=>{ rmArm = false; e.target.textContent = "Retirer"; }, 3000); return; }
+        const err = withdraw(t.name);
+        if(err) $("drawInfo").innerHTML = '<div class="err" style="display:block">' + err + '</div>';
+      };
       row.querySelector(".cp").onclick = async (e)=>{
         try{ await navigator.clipboard.writeText(msg); e.target.textContent = "Copié ✓"; }
         catch(_){ e.target.textContent = "Échec"; }
@@ -312,7 +373,7 @@
 
   // ---------- sauvegarde / restauration ----------
   function backupCode(){
-    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent}));
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed}));
     let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
     return "SS1:" + btoa(bin);
   }
@@ -345,7 +406,7 @@
   function restore(code){
     const d = readBackup(code), box = $("restoreMsg");
     if(!d){ box.innerHTML = '<div class="err" style="display:block">Code de sauvegarde invalide.</div>'; return; }
-    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; save();
+    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; $("budget").value = state.budget; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
     $("draw").textContent = state.draw ? "🎲 Relancer le tirage" : "🎲 Lancer le tirage";
     $("drawInfo").innerHTML = state.draw ? '<div class="ok">✅ Tirage restauré. Tu peux renvoyer les liens.</div>' : "";
