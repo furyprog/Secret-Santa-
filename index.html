@@ -121,16 +121,16 @@
   .helpBtn{position:absolute;top:14px;right:16px;z-index:20;width:48px;height:48px;padding:0;border:none;background:none;cursor:pointer;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4));transition:transform .2s}
   .helpBtn:hover{transform:rotate(-8deg) scale(1.08)}
   .helpBtn img{width:100%;height:100%;display:block}
-  #help,#helpP{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
-  #help::backdrop,#helpP::backdrop{background:rgba(10,30,20,.6)}
-  #help .hd,#helpP .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
-  #help .hd img,#helpP .hd img{width:32px;height:32px}
-  #help .hd h2,#helpP .hd h2{color:#fff;margin:0;flex:1}
-  #help .hd button,#helpP .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
-  #help .bd,#helpP .bd{padding:6px 18px 18px;font-size:15px}
-  #help h3,#helpP h3{font-family:Fraunces,serif;font-size:17px;color:var(--green);margin:16px 0 4px}
-  #help p,#help ul,#helpP p,#helpP ul{margin:4px 0}
-  #help ul,#helpP ul{padding-left:20px}
+  #help,#helpP,#saveAsk{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+  #help::backdrop,#helpP::backdrop,#saveAsk::backdrop{background:rgba(10,30,20,.6)}
+  #help .hd,#helpP .hd,#saveAsk .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
+  #help .hd img,#helpP .hd img,#saveAsk .hd img{width:32px;height:32px}
+  #help .hd h2,#helpP .hd h2,#saveAsk .hd h2{color:#fff;margin:0;flex:1}
+  #help .hd button,#helpP .hd button,#saveAsk .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
+  #help .bd,#helpP .bd,#saveAsk .bd{padding:6px 18px 18px;font-size:15px}
+  #help h3,#helpP h3,#saveAsk h3{font-family:Fraunces,serif;font-size:17px;color:var(--green);margin:16px 0 4px}
+  #help p,#help ul,#helpP p,#helpP ul,#saveAsk p,#saveAsk ul{margin:4px 0}
+  #help ul,#helpP ul,#saveAsk ul{padding-left:20px}
   #helpP .bd{text-align:left}
 </style>
 </head>
@@ -140,6 +140,18 @@
 <div id="admin" class="wrap">
   <button class="helpBtn" id="helpBtn" title="Aide" aria-label="Aide"><img src="help.svg" alt="Aide"></button>
 
+  <dialog id="saveAsk">
+    <div class="hd"><h2>💾 Sauvegarde du tirage</h2></div>
+    <div class="bd">
+      <p>Le tirage est fait. Garde tout de suite une copie en lieu sûr&nbsp;: si les données de ce navigateur sont effacées ou si le tirage est modifié par erreur, tu pourras le récupérer. Le code est illisible&nbsp;: tu ne verras pas le résultat.</p>
+      <div class="actions" style="flex-direction:column;align-items:stretch">
+        <a class="btn wa small" id="saveAskWa" href="#" target="_blank" rel="noopener">M'envoyer la sauvegarde sur WhatsApp</a>
+        <button class="btn ghost small" id="saveAskFile">Télécharger un fichier</button>
+        <button class="btn ghost small" id="saveAskCopy">Copier le code</button>
+        <button class="btn ghost small" id="saveAskLater">Plus tard</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="help">
     <div class="hd"><img src="help.svg" alt=""><h2>Comment ça marche ?</h2><button id="helpClose" aria-label="Fermer">×</button></div>
     <div class="bd">
@@ -163,6 +175,8 @@
       <p>Sous chaque nom, l'appli indique « a ouvert son lien le … à … » dès que la personne a ouvert son cadeau, ou « lien pas encore ouvert ». C'est mis à jour tout seul. Seul un code anonyme est envoyé au serveur&nbsp;: ni nom, ni numéro, ni tirage.</p>
       <h3>🎁 Idées cadeaux</h3>
       <p>Sur sa page cadeau, sous le nom découvert, chacun peut remplir <b>Saisis ici les cadeaux qui te feraient plaisir</b> (un cadeau par ligne, avec si besoin le lien vers la boutique qui le vend) puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
+      <h3>🎁 Cadeaux reçus</h3>
+      <p>Sur sa page cadeau, chacun peut cocher <b>J'ai reçu mon cadeau</b>. Sous la liste d'envoi, tu vois combien de personnes l'ont coché, sans savoir qui offre à qui. Le lendemain de la date de remise, le bouton <b>Voir qui n'a pas offert</b> affiche seulement les personnes dont le destinataire n'a pas coché la case (par exemple « Paul n'a pas offert à Marie »)&nbsp;: les autres binômes restent cachés. Sans date de remise, le bouton est disponible tout de suite.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -175,6 +189,7 @@
       <p>Pendant un tirage, on peut corriger un prénom, un nom, un groupe, un téléphone ou un âge sans rien perdre&nbsp;: seuls les liens concernés sont refaits, et l'appli dit à qui les renvoyer. Si un tirage a été remplacé ou annulé, le bouton <b>Récupérer le tirage précédent</b> (étape 2) le fait revenir. Et sans sauvegarde, colle les messages déjà envoyés dans <b>Restaurer une sauvegarde</b>&nbsp;: l'appli reconstruit le tirage à partir des liens.</p>
       <h3>💾 Sauvegarde</h3>
       <p>Après le tirage, garde une copie (sur WhatsApp, en copiant le code ou en fichier). Le code commence par <b>SS1:</b> et reste illisible : tu peux le garder sans connaître le résultat.</p>
+      <p>Juste après chaque tirage, l'appli te propose aussitôt d'en garder une copie.</p>
       <p>Pour retrouver ton tirage (autre téléphone, données effacées…), ouvre <b>Restaurer une sauvegarde</b>, colle le code ou ouvre le fichier, puis appuie sur <b>Restaurer</b>.</p>
       <p>Avec plusieurs Secret Santa, chacun a sa propre sauvegarde, qui garde aussi son nom. La restauration n'écrase rien&nbsp;: si le Secret Santa affiché contient déjà des participants, la sauvegarde est remise dans un nouveau Secret Santa. Si un Secret Santa porte déjà le même nom, l'appli te demande si tu veux le remplacer ou garder les deux.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Tes données restent sur ton téléphone. Bonnes fêtes ! 🎄</p>
@@ -259,6 +274,12 @@
     <p class="hint hidden" id="seenErr" style="color:var(--red-d)">⚠️ Le serveur de suivi des liens ouverts ne répond pas : l'information « a ouvert son lien » ne peut pas être mise à jour.</p>
     <div id="sendInfo"></div>
     <div id="sendList"></div>
+    <div id="giftBox" class="hidden" style="margin-top:14px">
+      <p class="hint" id="giftCount" style="margin:0 0 8px"></p>
+      <button class="btn ghost small" id="giftShow">🔎 Voir qui n'a pas offert</button>
+      <p class="hint hidden" id="giftWhen" style="margin:6px 0 0"></p>
+      <div id="giftList" style="margin-top:8px"></div>
+    </div>
     <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
       <button class="btn ghost small" id="toggleLate">+ Ajouter un retardataire</button>
       <div id="late" class="hidden" style="margin-top:10px">
@@ -316,6 +337,8 @@
       <p>Dans <b>Saisis ici les cadeaux qui te feraient plaisir</b>, écris un cadeau par ligne. Tu peux ajouter le <b>lien vers la boutique</b> qui le vend&nbsp;: copie l'adresse de la page du produit et colle-la dans la case en dessous. <b>+ Ajouter un cadeau</b> ajoute une ligne, la croix <b>×</b> l'enlève. Appuie sur <b>Enregistrer</b>&nbsp;: la personne qui doit te faire un cadeau les verra sur sa page.</p>
       <h3>🎁 Ses idées cadeaux</h3>
       <p>Sous le nom découvert, tu vois les cadeaux souhaités par la personne à qui tu offres, avec un lien 🛒 vers la boutique quand elle en a mis un. La liste se met à jour toute seule.</p>
+      <h3>🎁 J'ai reçu mon cadeau</h3>
+      <p>Quand tu as reçu ton cadeau, rouvre ton lien et coche <b>J'ai reçu mon cadeau</b>&nbsp;: l'organisateur saura qu'il a bien été offert.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -343,6 +366,11 @@
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
+    <div id="gotBox" class="wishBox hidden" style="margin-top:26px">
+      <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600;font-size:17px;color:#ffe7a8;margin:0"><input type="checkbox" id="gotChk" style="width:22px;height:22px;flex:none"> 🎁 J'ai reçu mon cadeau</label>
+      <p style="font-size:13px;margin:6px 0 0">Coche cette case quand tu as reçu ton cadeau : l'organisateur saura qu'il a bien été offert.</p>
+      <p id="gotMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
+    </div>
     <div id="myWish" class="wishBox hidden" style="margin-top:26px">
       <b>📝 Saisis ici les cadeaux qui te feraient plaisir</b>
       <div id="myWishRows"></div>
@@ -553,6 +581,15 @@
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) loadHis(); });
       // mes propres idées (seulement si le lien a un code anonyme)
       if(!d.vid) return;
+      // case « J'ai reçu mon cadeau »
+      $("gotBox").classList.remove("hidden");
+      fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; }).catch(()=>{});
+      $("gotChk").onchange = ()=>{
+        const v = $("gotChk").checked; $("gotMsg").textContent = "Enregistrement…";
+        fetch(API + "/recu", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({id:d.vid, recu:v})})
+          .then(r => { if(!r.ok) throw 0; $("gotMsg").textContent = v ? "✅ Merci, c'est noté !" : "✅ C'est noté."; })
+          .catch(()=>{ $("gotChk").checked = !v; $("gotMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
+      };
       const myKey = wishKey(d.giver, d);
       const rows = $("myWishRows");
       const addRow = (it = {t:"", u:""}) => {
@@ -841,12 +878,24 @@
     const res = doDraw(people);
     if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
     state.draw = people.map((p,i)=>{ const vid = newVid(); return {name:p.name, phone:p.phone, vid, token:tok(p.name, people[res[i]].name, vid)}; });
-    state.seen = {};
+    state.seen = {}; state.recu = {};
     state.sent = {}; state.changed = {}; state.confirmed = {}; save();
     $("draw").textContent = "🎲 Relancer le tirage";
     $("sendInfo").innerHTML = ""; $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les groupes. Le résultat est caché dans les liens.</div>';
     renderSend();
+    askSave();
   };
+  function askSave(){ // propose tout de suite une sauvegarde du tirage
+    const dl = $("saveAsk"); $("saveAskWa").href = $("saveWa").href;
+    if(dl.showModal) dl.showModal(); else dl.setAttribute("open","");
+  }
+  const closeAsk = ()=>{ const dl = $("saveAsk"); if(dl.close) dl.close(); else dl.removeAttribute("open"); };
+  $("saveAskWa").onclick = ()=> setTimeout(closeAsk, 300);
+  $("saveAskFile").onclick = ()=>{ $("saveFile").click(); closeAsk(); };
+  $("saveAskCopy").onclick = async (e)=>{
+    try{ await navigator.clipboard.writeText(backupCode()); e.target.textContent = "Copié ✓"; setTimeout(closeAsk, 900); }catch(_){ e.target.textContent = "Échec"; }
+  };
+  $("saveAskLater").onclick = closeAsk;
 
   // ---------- envoi ----------
   function waNumber(raw){
@@ -859,7 +908,7 @@
   }
   function linkFor(t){ const base = location.href.split("#")[0].split("?")[0]; return base + "#" + t.token; }
   function renderSend(){
-    renderSave(); lockRows();
+    renderSave(); lockRows(); renderGifts();
     const card = $("sendCard"), box = $("sendList");
     if(!state.draw){ card.classList.add("hidden"); return; }
     card.classList.remove("hidden"); box.innerHTML = "";
@@ -900,6 +949,32 @@
     const d = new Date(v);
     return "👀 a ouvert son lien le " + d.toLocaleDateString("fr-FR", {day:"2-digit", month:"2-digit"}) + " à " + d.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
   }
+  // cadeaux reçus : seulement un compte ; après la date de remise, un bouton montre ceux qui n'ont pas offert (jamais tous les binômes)
+  function lastDay(){ const a = state.dateFrom, b = state.dateTo; return [a, b].filter(Boolean).sort().pop() || ""; }
+  function giftOpen(){ const l = lastDay(); if(!l) return true; const t = new Date(), d = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0"); return d > l; }
+  let giftArm = false;
+  function renderGifts(){
+    const box = $("giftBox"); if(!state.draw){ box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
+    const recu = state.recu || {}, n = state.draw.length, k = state.draw.filter(t => t.vid && recu[t.vid]).length;
+    $("giftCount").textContent = "🎁 " + k + " personne" + (k > 1 ? "s" : "") + " sur " + n + " " + (k > 1 ? "ont" : "a") + " coché « J'ai reçu mon cadeau ».";
+    const open = giftOpen();
+    $("giftShow").disabled = !open;
+    $("giftWhen").textContent = open ? "" : "Le bouton sera disponible le lendemain de la date de remise (" + fmtDate(lastDay()) + ").";
+    $("giftWhen").classList.toggle("hidden", open);
+    if(!open) $("giftList").innerHTML = "";
+  }
+  $("giftShow").onclick = ()=>{
+    if(!giftOpen()) return;
+    if(!giftArm){ giftArm = true; $("giftShow").textContent = "⚠️ Confirmer ? (révèle qui n'a pas offert à qui)"; setTimeout(()=>{ giftArm = false; $("giftShow").textContent = "🔎 Voir qui n'a pas offert"; }, 4000); return; }
+    giftArm = false; $("giftShow").textContent = "🔎 Voir qui n'a pas offert";
+    const recu = state.recu || {}, lines = [];
+    state.draw.forEach(t => { const rc = recv(t), R = rc && state.draw.find(x => x.name === rc);
+      if(R && R.vid && !recu[R.vid]) lines.push(esc(t.name) + " n'a pas offert à " + esc(rc)); });
+    $("giftList").innerHTML = lines.length
+      ? '<div class="err" style="display:block">' + lines.join("<br>") + '</div>'
+      : '<div class="ok">✅ Tout le monde a reçu son cadeau.</div>';
+  };
   let seenBusy = false;
   async function refreshSeen(){
     if(!state.draw || seenBusy || document.hidden) return;
@@ -916,6 +991,15 @@
         if(changed){ save(); renderSend(); }
       }
     }catch(e){ $("seenErr").classList.remove("hidden"); }
+    try{ // cadeaux reçus (coché par chaque participant sur sa page)
+      const r = await fetch(API + "/recus?ids=" + ids.join(","), {cache:"no-store"});
+      if(r.ok){
+        const got = await r.json(), old = JSON.stringify(state.recu || {}), recu = {};
+        for(const id of ids) if(got[id]) recu[id] = got[id];
+        if(JSON.stringify(recu) !== old){ state.recu = recu; save(); }
+        renderGifts();
+      }
+    }catch(e){}
     seenBusy = false;
   }
   setInterval(refreshSeen, 30000);
@@ -1197,7 +1281,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.10"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.11"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
