@@ -239,6 +239,7 @@
     <p class="hint" id="nextInfo" style="text-align:center;margin:0 0 12px"></p>
     <div style="margin:0 0 8px"><button class="btn ghost small" id="seenTest">🔧 Tester le suivi des liens ouverts</button><div id="seenTestMsg" style="font-size:13px;margin-top:6px;white-space:pre-line"></div></div>
     <p class="hint hidden" id="seenErr" style="color:var(--red-d)">⚠️ Le serveur de suivi des liens ouverts ne répond pas : l'information « a ouvert son lien » ne peut pas être mise à jour.</p>
+    <div id="sendInfo"></div>
     <div id="sendList"></div>
     <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
       <button class="btn ghost small" id="toggleLate">+ Ajouter un retardataire</button>
@@ -631,9 +632,9 @@
   $("lateAdd").onclick = ()=>{
     const p = {name:$("lateName").value.trim(), last:$("lateLast").value.trim(), family:$("lateFamily").value.trim(), age:$("lateAge").value.trim(), phone:$("latePhone").value.trim()};
     const err = addLate(p);
-    if(err){ $("drawInfo").innerHTML = '<div class="err" style="display:block">' + esc(err) + '</div>'; return; }
+    if(err){ $("drawInfo").innerHTML = '<div class="err" style="display:block">' + esc(err) + '</div>'; showSendInfo(); return; }
     ["lateName","lateLast","lateFamily","lateAge","latePhone"].forEach(id => $(id).value = ""); $("late").classList.add("hidden");
-    renderList();
+    renderList(); showSendInfo();
   };
 
   // ---------- tirage ----------
@@ -681,7 +682,7 @@
     state.seen = {};
     state.sent = {}; state.changed = {}; state.confirmed = {}; save();
     $("draw").textContent = "🎲 Relancer le tirage";
-    $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les groupes. Le résultat est caché dans les liens.</div>';
+    $("sendInfo").innerHTML = ""; $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les groupes. Le résultat est caché dans les liens.</div>';
     renderSend();
   };
 
@@ -776,6 +777,10 @@
     show();
   };
   document.addEventListener("visibilitychange", refreshSeen);
+  function showSendInfo(){ // recopie le résultat près de la liste, là où l'on vient d'appuyer
+    const box = $("sendInfo"); box.innerHTML = $("drawInfo").innerHTML;
+    box.scrollIntoView({behavior:"smooth", block:"center"});
+  }
   function bindRow(row, t, msg){
       const cb = row.querySelector(".cs");
       const mark = v => { state.sent[t.name] = v; cb.checked = v; row.classList.toggle("done", v); save(); renderNext(); };
@@ -785,8 +790,10 @@
       let rmArm = false;
       row.querySelector(".rm").onclick = (e)=>{
         if(!rmArm){ rmArm = true; e.target.textContent = "Confirmer ?"; setTimeout(()=>{ rmArm = false; e.target.textContent = "Retirer"; }, 3000); return; }
-        const err = withdraw(t.name);
+        let err;
+        try{ err = withdraw(t.name); }catch(ex){ err = "Erreur : " + ex.message; }
         if(err) $("drawInfo").innerHTML = '<div class="err" style="display:block">' + err + '</div>';
+        showSendInfo();
       };
       row.querySelector(".cp").onclick = async (e)=>{
         try{ await navigator.clipboard.writeText(msg); e.target.textContent = "Copié ✓"; }
@@ -963,7 +970,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.0"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.1"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
