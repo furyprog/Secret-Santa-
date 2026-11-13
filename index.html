@@ -518,7 +518,7 @@
       const hisKey = wishKey(d.receiver, d);
       const loadHis = ()=> fetch(API + "/souhaits?k=" + hisKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
         const items = parse(j.texte), box = $("hisWishTxt"); box.innerHTML = "";
-        if(!items.length) box.textContent = "Pas encore d'idée pour le moment. Elles s'afficheront ici dès qu'elle en aura écrit.";
+        if(!items.length) box.append("Pas encore d'idée pour le moment.", document.createElement("br"), "Elles s'afficheront ici dès qu'elle en aura écrit.");
         else { const ul = document.createElement("ul"); ul.className = "hisList";
           items.forEach(it => { const li = document.createElement("li"); li.textContent = it.t;
             const u = fixUrl(it.u);
@@ -1176,7 +1176,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.6"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.7"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
