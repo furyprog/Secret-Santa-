@@ -139,7 +139,6 @@
         <li><b>Précision</b> : un texte affiché après « Secret Santa » (ex. « de la famille Martin »).</li>
         <li><b>Date</b> : une seule date pour une réception, ou deux dates pour une période de remise.</li>
         <li><b>Montant maximum</b> : le budget du cadeau, rappelé à chacun.</li>
-        <li><b>Numéro de téléphone de l'organisateur</b> : chaque participant pourra te confirmer qu'il a bien reçu son tirage.</li>
       </ul>
       <h3>🎲 2. Le tirage</h3>
       <p>Appuie sur <b>Lancer le tirage</b>. Personne ne se tire soi-même, et deux personnes du <b>même groupe</b> (même nom dans la colonne Groupe : une famille, un couple, une équipe…) ne peuvent pas se tirer. Toi, tu ne vois jamais qui offre à qui.</p>
@@ -203,15 +202,9 @@
       </div>
       <p class="hint">Une seule date pour une réception, ou les deux pour une période. <span id="whenPreview"></span></p>
     </div>
-    <div style="margin:0 0 14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:8px;align-items:end">
-        <label for="budget">Montant maximum du cadeau (€)</label>
-        <label for="orgPhone">Numéro de téléphone de l'organisateur</label>
-        <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
-        <input id="orgPhone" type="tel" inputmode="tel" placeholder="06…">
-        <span></span>
-        <p class="hint">Pour confirmer la bonne réception de ton tirage</p>
-      </div>
+    <div style="margin:0 0 14px;max-width:260px">
+      <label for="budget">Montant maximum du cadeau (€)</label>
+      <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
     </div>
     <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
     <div id="rows"></div>
@@ -311,7 +304,6 @@
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
-    <a id="confirmBtn" class="btn wa hidden" target="_blank" rel="noopener" style="margin:14px 0 4px">✅ C'est noté, prévenir l'organisateur</a>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
   </div>
@@ -480,8 +472,7 @@
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
       if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
-      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); }
-      if(d.org){ const c = $("confirmBtn"); c.href = "https://wa.me/" + d.org + "?text=" + encodeURIComponent("✅ " + d.giver + " a bien reçu son Secret Santa 🎅"); c.classList.remove("hidden"); } };
+      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); } };
     $("gift").onclick = open;
     const s = $("snow");
     for(let i=0;i<30;i++){ const f=document.createElement("span"); f.textContent="❄";
@@ -550,8 +541,8 @@
     if(!vid){ const t = (state.draw || []).find(x => x.name === g); vid = t && t.vid ? t.vid : ""; }
     const pin = pinOf(phoneOf(g)), age = ageOf(r);
     const gp = state.people.find(q => full(q) === g), first = gp ? (gp.name||"").trim() : "";
-    if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, waNumber(state.orgPhone), state.group, whenText(), "", vid, first);
-    return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText(), age, vid, first);
+    if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, "", state.group, whenText(), "", vid, first);
+    return encode(g, r, state.budget, "", state.group, whenText(), age, vid, first);
   }
   function recv(t){ // destinataire en clair (l'organisateur connaît les téléphones)
     const d = decode(t.token); if(!d) return null;
@@ -575,8 +566,6 @@
   $("group").value = state.group || ""; showGroup();
   $("group").oninput = ()=>{ state.group = $("group").value.trim(); showGroup(); settingsChanged("La précision a changé"); };
   $("budget").value = state.budget || "";
-  $("orgPhone").value = state.orgPhone || "";
-  $("orgPhone").oninput = ()=>{ state.orgPhone = $("orgPhone").value.trim(); settingsChanged("Ton numéro a changé"); };
   $("budget").oninput = ()=>{ state.budget = $("budget").value.trim(); settingsChanged("Le montant a changé"); };
   function settingsChanged(what){
     if(state.draw){
@@ -894,7 +883,7 @@
     if(d.ssName){ ssList.names[ssList.cur] = d.ssName; saveList(); renderList(); }
     state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup();
     state.seen = d.seen || {};
-    state.dateFrom = d.dateFrom || ""; state.dateTo = d.dateTo || ""; $("dateFrom").value = state.dateFrom; $("dateTo").value = state.dateTo; showWhen(); $("budget").value = state.budget; $("orgPhone").value = state.orgPhone; save();
+    state.dateFrom = d.dateFrom || ""; state.dateTo = d.dateTo || ""; $("dateFrom").value = state.dateFrom; $("dateTo").value = state.dateTo; showWhen(); $("budget").value = state.budget; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
     $("draw").textContent = state.draw ? "🎲 Relancer le tirage" : "🎲 Lancer le tirage";
     $("drawInfo").innerHTML = state.draw ? '<div class="ok">✅ Tirage restauré. Tu peux renvoyer les liens.</div>' : "";
@@ -973,7 +962,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.17"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.18"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
