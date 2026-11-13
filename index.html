@@ -468,7 +468,7 @@
       };
       $("pinOk").onclick = check;
       $("pin").onkeydown = e => { if(e.key === "Enter") check(); };
-      $("pin").oninput = ()=>{ $("pinErr").classList.add("hidden"); if($("pin").value.replace(/\D/g,"").length === 4) check(); };
+      $("pin").oninput = ()=>{ $("pinErr").classList.add("hidden"); };
     } else ready();
     const open = ()=>{ if(opening) return; opening = true; $("tap").classList.add("hidden");
       jingle(); $("gift").classList.add("opening");
@@ -954,7 +954,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.12"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.13"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
