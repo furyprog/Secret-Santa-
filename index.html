@@ -959,7 +959,7 @@
     const box = $("giftBox"); if(!state.draw){ box.classList.add("hidden"); return; }
     box.classList.remove("hidden");
     const recu = state.recu || {}, n = state.draw.length, k = state.draw.filter(t => t.vid && recu[t.vid]).length;
-    $("giftCount").textContent = "🎁 " + k + " personne" + (k > 1 ? "s" : "") + " sur " + n + " " + (k > 1 ? "ont" : "a") + " reçu son cadeau.";
+    $("giftCount").textContent = "🎁 " + k + " personne" + (k > 1 ? "s" : "") + " sur " + n + " " + (k > 1 ? "ont reçu leur" : "a reçu son") + " cadeau.";
     const open = giftOpen();
     $("giftShow").disabled = !open;
     $("giftWhen").textContent = open ? "" : "Le bouton sera disponible le lendemain de la date de remise (" + fmtDate(lastDay()) + ").";
@@ -1295,7 +1295,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.12"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.13"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
