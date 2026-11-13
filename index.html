@@ -66,12 +66,74 @@
   .snow{position:fixed;inset:0;pointer-events:none;overflow:hidden}
   .snow span{position:absolute;top:-10px;color:#fff;opacity:.7;animation:fall linear infinite}
   @keyframes fall{to{transform:translateY(110vh)}}
+  /* Fond de Noël */
+  body{background-color:#123d27;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23d4a634' fill-opacity='.22'%3E%3Cpath d='M20 8l2.4 5.6 6 .5-4.6 4 1.4 5.9L20 21l-5.2 3 1.4-5.9-4.6-4 6-.5z'/%3E%3Cpath d='M84 70l1.6 3.7 4 .3-3 2.7.9 3.9L84 78.6l-3.5 2 .9-3.9-3-2.7 4-.3z'/%3E%3C/g%3E%3Cg fill='%23ffffff' fill-opacity='.18'%3E%3Ccircle cx='60' cy='30' r='2'/%3E%3Ccircle cx='100' cy='18' r='1.5'/%3E%3Ccircle cx='30' cy='90' r='2.2'/%3E%3Ccircle cx='70' cy='108' r='1.4'/%3E%3Ccircle cx='108' cy='96' r='1.8'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(circle at 15% 0%,#1f6b45 0,transparent 55%),
+      radial-gradient(circle at 100% 100%,#7d141b 0,transparent 50%),
+      linear-gradient(160deg,#18502f,#0f3320);
+    background-attachment:fixed;min-height:100vh}
+  body::before{content:"";display:block;height:10px;
+    background:repeating-linear-gradient(135deg,#b3202a 0 16px,#fff 16px 24px,#1f6b45 24px 40px,#fff 40px 48px);
+    border-bottom:3px solid var(--gold)}
+  #admin h1{color:#f3cf6b;text-shadow:0 2px 6px rgba(0,0,0,.35);padding-right:52px}
+  #admin > .sub{color:#e9f1ec}
+  #admin > .credit{color:#e9dcc0!important}
+  .card{box-shadow:0 6px 18px rgba(0,0,0,.22);border-top:4px solid var(--red)}
+  .card:nth-of-type(even){border-top-color:var(--green)}
+  .card h2{color:var(--green)}
+  /* Aide */
+  #admin{position:relative}
+  .helpBtn{position:absolute;top:14px;right:16px;z-index:20;width:48px;height:48px;padding:0;border:none;background:none;cursor:pointer;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4));transition:transform .2s}
+  .helpBtn:hover{transform:rotate(-8deg) scale(1.08)}
+  .helpBtn img{width:100%;height:100%;display:block}
+  #help{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+  #help::backdrop{background:rgba(10,30,20,.6)}
+  #help .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
+  #help .hd img{width:32px;height:32px}
+  #help .hd h2{color:#fff;margin:0;flex:1}
+  #help .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
+  #help .bd{padding:6px 18px 18px;font-size:15px}
+  #help h3{font-family:Fraunces,serif;font-size:17px;color:var(--green);margin:16px 0 4px}
+  #help p,#help ul{margin:4px 0}
+  #help ul{padding-left:20px}
 </style>
 </head>
 <body>
 
 <!-- ========== ORGANISATEUR ========== -->
 <div id="admin" class="wrap">
+  <button class="helpBtn" id="helpBtn" title="Aide" aria-label="Aide"><img src="help.svg" alt="Aide"></button>
+
+  <dialog id="help">
+    <div class="hd"><img src="help.svg" alt=""><h2>Comment ça marche ?</h2><button id="helpClose" aria-label="Fermer">×</button></div>
+    <div class="bd">
+      <h3>👥 1. Les participants</h3>
+      <p>Écris le <b>prénom</b>, la <b>famille</b> et le <b>téléphone</b> de chaque personne. Le bouton <b>+ Ajouter</b> ajoute une ligne, la croix <b>×</b> en supprime une.</p>
+      <p><b>Coller une liste</b> : colle plusieurs personnes d'un coup, une par ligne, sous la forme <i>Prénom ; Famille ; Téléphone</i>, puis appuie sur <b>Importer</b>.</p>
+      <h3>⚙️ Les réglages (facultatifs)</h3>
+      <ul>
+        <li><b>Précision</b> : un texte affiché après « Secret Santa » (ex. « de la famille Martin »).</li>
+        <li><b>Date</b> : une seule date pour une réception, ou deux dates pour une période de remise.</li>
+        <li><b>Montant maximum</b> : le budget du cadeau, rappelé à chacun.</li>
+        <li><b>Ton numéro</b> : chaque participant pourra te confirmer qu'il a bien reçu son tirage.</li>
+      </ul>
+      <h3>🎲 2. Le tirage</h3>
+      <p>Appuie sur <b>Lancer le tirage</b>. Personne ne se tire soi-même, et deux personnes de la <b>même famille</b> (même nom dans la colonne Famille) ne peuvent pas se tirer. Toi, tu ne vois jamais qui offre à qui.</p>
+      <h3>📨 3. L'envoi</h3>
+      <p><b>Envoyer au suivant</b> ouvre WhatsApp avec le message prêt pour la personne suivante : tu n'as plus qu'à l'envoyer. Si la personne n'a pas WhatsApp, utilise <b>Envoyer par SMS</b>.</p>
+      <p>Chaque personne reçoit un lien personnel : en l'ouvrant, elle touche le cadeau et découvre le nom. <b>N'ouvre pas les liens toi-même</b>, sinon tu connaîtras le résultat.</p>
+      <h3>✅ Envoyé / Confirmé</h3>
+      <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Coche <b>confirmé</b> quand la personne t'a prévenu qu'elle a bien reçu son tirage. Tu vois ainsi d'un coup d'œil où tu en es.</p>
+      <h3>🚪 Désistement</h3>
+      <p>Si quelqu'un ne participe plus, appuie sur <b>Retirer</b> à côté de son nom. L'appli redonne une personne à celui qui devait lui offrir un cadeau, sans refaire tout le tirage. Les personnes concernées apparaissent en jaune avec « à prévenir » : renvoie-leur leur nouveau lien, le message « changement » est déjà prêt.</p>
+      <h3>💾 Sauvegarde</h3>
+      <p>Après le tirage, garde une copie (sur WhatsApp, en copiant le code ou en fichier). Le code commence par <b>SS1:</b> et reste illisible : tu peux le garder sans connaître le résultat.</p>
+      <p>Pour retrouver ton tirage (autre téléphone, données effacées…), ouvre <b>Restaurer une sauvegarde</b>, colle le code ou ouvre le fichier, puis appuie sur <b>Restaurer</b>.</p>
+      <p style="margin-top:16px;font-size:13px;color:var(--muted)">Tes données restent sur ton téléphone. Bonnes fêtes ! 🎄</p>
+    </div>
+  </dialog>
   <h1>🎅 Secret Santa<span id="groupTitle"></span></h1>
   <p class="sub">Tirage au sort avec exclusions par famille. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
 
@@ -155,7 +217,7 @@
     </details>
   </div>
 
-  <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:24px">Appli réalisée par Th.Roussel</p>
+  <p class="credit" style="text-align:center;font-size:12px;color:var(--muted);margin-top:24px">Appli réalisée par Th.Roussel</p>
 </div>
 
 <!-- ========== RÉVÉLATION ========== -->
@@ -510,6 +572,14 @@
   renderRows();
   if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
   renderSend();
+})();
+</script>
+<script>
+(function(){
+  const d = document.getElementById("help");
+  document.getElementById("helpBtn").onclick = ()=>{ if(d.showModal) d.showModal(); else d.setAttribute("open",""); };
+  document.getElementById("helpClose").onclick = ()=>{ if(d.close) d.close(); else d.removeAttribute("open"); };
+  d.addEventListener("click", e=>{ if(e.target === d && d.close) d.close(); });
 })();
 </script>
 </body>
