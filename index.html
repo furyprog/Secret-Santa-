@@ -161,7 +161,7 @@
       <h3>👀 Qui a ouvert son lien&nbsp;?</h3>
       <p>Sous chaque nom, l'appli indique « a ouvert son lien le … à … » dès que la personne a ouvert son cadeau, ou « lien pas encore ouvert ». C'est mis à jour tout seul. Seul un code anonyme est envoyé au serveur&nbsp;: ni nom, ni numéro, ni tirage.</p>
       <h3>🎁 Idées cadeaux</h3>
-      <p>Sur sa page cadeau, sous le nom découvert, chacun peut remplir <b>Saisie ici tes cadeaux qui te feraient plaisir</b> (un cadeau par ligne, avec si besoin le lien vers la boutique qui le vend) puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
+      <p>Sur sa page cadeau, sous le nom découvert, chacun peut remplir <b>Saisie ici les cadeaux qui te feraient plaisir</b> (un cadeau par ligne, avec si besoin le lien vers la boutique qui le vend) puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -326,7 +326,7 @@
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
     <div id="myWish" class="wishBox hidden" style="margin-top:26px">
-      <b>📝 Saisie ici tes cadeaux qui te feraient plaisir</b>
+      <b>📝 Saisie ici les cadeaux qui te feraient plaisir</b>
       <div id="myWishRows"></div>
       <button type="button" class="btn" id="myWishAdd" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin:6px 0">+ Ajouter un cadeau</button>
       <p style="font-size:13px;margin:4px 0 8px">La personne qui doit te faire un cadeau les verra sur sa page. Tu peux les modifier quand tu veux.</p>
@@ -1176,7 +1176,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.7"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.8"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
