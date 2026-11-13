@@ -911,7 +911,6 @@
   function renderList(){
     const sel = $("ssSelect"); sel.innerHTML = "";
     ssList.ids.forEach((id,i)=>{ const o = document.createElement("option"); o.value = id; o.textContent = ssLabel(id, i); o.selected = id === ssList.cur; sel.appendChild(o); });
-    $("ssDel").classList.toggle("hidden", ssList.ids.length < 2);
   }
   $("ssSelect").onchange = ()=>{ save(); ssList.cur = $("ssSelect").value; saveList(); location.reload(); };
   function nameOwner(name, exceptId){ const n = name.trim().toLowerCase(); return ssList.ids.find(id => id !== exceptId && (ssList.names[id]||"").trim().toLowerCase() === n) || null; }
@@ -942,10 +941,10 @@
   };
   let delArm = false;
   $("ssDel").onclick = ()=>{
-    if(ssList.ids.length < 2) return;
     if(!delArm){ delArm = true; $("ssDel").textContent = "Confirmer la suppression ?"; setTimeout(()=>{ delArm = false; $("ssDel").textContent = "Supprimer"; }, 3000); return; }
     try{ localStorage.removeItem(LS); }catch(e){}
     delete ssList.names[ssList.cur];
+    if(ssList.ids.length < 2){ saveList(); location.reload(); return; } // c'était le seul : il est remplacé par un Secret Santa vide
     ssList.ids = ssList.ids.filter(x => x !== ssList.cur); ssList.cur = ssList.ids[0]; saveList(); location.reload();
   };
   $("group").addEventListener("input", renderList);
@@ -970,7 +969,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.1"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.2"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
