@@ -177,6 +177,7 @@
       <p>Sur sa page cadeau, sous le nom découvert, chacun peut remplir <b>Saisis ici les cadeaux qui te feraient plaisir</b> (un cadeau par ligne, avec si besoin le lien vers la boutique qui le vend) puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
       <h3>🎁 Cadeaux reçus</h3>
       <p>Sur sa page cadeau, chacun peut cocher <b>J'ai reçu mon cadeau</b>. Sous la liste d'envoi, tu vois combien de personnes l'ont coché, sans savoir qui offre à qui. Le lendemain de la date de remise, le bouton <b>Voir qui n'a pas offert</b> affiche seulement les personnes dont le destinataire n'a pas coché la case (par exemple « Paul n'a pas offert à Marie »)&nbsp;: les autres binômes restent cachés. Sans date de remise, le bouton est disponible tout de suite.</p>
+      <p>Si une personne a reçu son cadeau mais n'a pas coché la case, coche toi-même <b>a reçu son cadeau</b> à côté de son nom&nbsp;: cela compte exactement comme sa propre case.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -941,6 +942,7 @@
         <a class="btn ghost small sms" href="${sms}">SMS</a>
         <button class="btn ghost small cp">Copier</button>
         <label class="chk"><input type="checkbox" class="cs" ${state.sent[t.name]?"checked":""}> envoyé</label>
+        ${t.vid ? `<label class="chk"><input type="checkbox" class="cr" ${(state.recu||{})[t.vid]?"checked":""}> a reçu son cadeau</label>` : ""}
         <button class="btn ghost small rm">Retirer</button>`; }
   function seenTxt(t){
     if(!t.vid) return "";
@@ -957,7 +959,7 @@
     const box = $("giftBox"); if(!state.draw){ box.classList.add("hidden"); return; }
     box.classList.remove("hidden");
     const recu = state.recu || {}, n = state.draw.length, k = state.draw.filter(t => t.vid && recu[t.vid]).length;
-    $("giftCount").textContent = "🎁 " + k + " personne" + (k > 1 ? "s" : "") + " sur " + n + " " + (k > 1 ? "ont" : "a") + " coché « J'ai reçu mon cadeau ».";
+    $("giftCount").textContent = "🎁 " + k + " personne" + (k > 1 ? "s" : "") + " sur " + n + " " + (k > 1 ? "ont" : "a") + " reçu son cadeau.";
     const open = giftOpen();
     $("giftShow").disabled = !open;
     $("giftWhen").textContent = open ? "" : "Le bouton sera disponible le lendemain de la date de remise (" + fmtDate(lastDay()) + ").";
@@ -1033,6 +1035,18 @@
       row.querySelector(".wa").addEventListener("click", ()=> mark(true));
       row.querySelector(".sms").addEventListener("click", ()=> mark(true));
       cb.onchange = ()=> mark(cb.checked);
+      const cr = row.querySelector(".cr");
+      if(cr) cr.onchange = async ()=>{ // l'organisateur coche à la place de la personne : compte comme sa propre case
+        const v = cr.checked; cr.disabled = true;
+        try{
+          const r = await fetch(API + "/recu", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({id:t.vid, recu:v})});
+          if(!r.ok) throw 0;
+          state.recu = state.recu || {};
+          if(v) state.recu[t.vid] = new Date().toISOString(); else delete state.recu[t.vid];
+          save(); renderGifts(); $("giftList").innerHTML = "";
+        }catch(e){ cr.checked = !v; $("seenErr").classList.remove("hidden"); }
+        cr.disabled = false;
+      };
       let rmArm = false;
       row.querySelector(".rm").onclick = (e)=>{
         if(!rmArm){ rmArm = true; e.target.textContent = "Confirmer ?"; setTimeout(()=>{ rmArm = false; e.target.textContent = "Retirer"; }, 3000); return; }
@@ -1281,7 +1295,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.11"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.12"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
