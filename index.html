@@ -64,8 +64,24 @@
     background:radial-gradient(circle at 30% 20%,#c4323b,#7d141b 70%);color:#fff;text-align:center}
   .reveal .box{max-width:420px}
   .reveal h1{color:#fff;font-size:34px}
-  .gift{font-size:80px;margin:10px 0;cursor:pointer;user-select:none;transition:transform .2s}
-  .gift:hover{transform:scale(1.08) rotate(-4deg)}
+  .gift{position:relative;width:130px;height:120px;margin:18px auto 10px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;animation:wiggle 2.4s ease-in-out infinite}
+  .gift .gbox{position:absolute;left:10px;right:10px;bottom:0;height:78px;border-radius:6px;
+    background:linear-gradient(90deg,transparent 42px,#f3cf6b 42px,#d4a634 68px,transparent 68px),linear-gradient(160deg,#2a8a5a,#165a37);box-shadow:0 8px 18px rgba(0,0,0,.35)}
+  .gift .glid{position:absolute;left:2px;right:2px;top:20px;height:26px;border-radius:6px;z-index:2;
+    background:linear-gradient(90deg,transparent 50px,#f3cf6b 50px,#d4a634 76px,transparent 76px),linear-gradient(160deg,#33a06a,#1c6b43);box-shadow:0 3px 6px rgba(0,0,0,.3)}
+  .gift .glid::before,.gift .glid::after{content:"";position:absolute;top:-24px;width:30px;height:26px;border:7px solid #f3cf6b;border-radius:50% 50% 10% 50%;box-sizing:border-box}
+  .gift .glid::before{left:33px;transform:rotate(-20deg)}
+  .gift .glid::after{right:33px;transform:scaleX(-1) rotate(-20deg)}
+  @keyframes wiggle{0%,70%,100%{transform:rotate(0)}75%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}85%{transform:rotate(-4deg)}90%{transform:rotate(3deg)}}
+  .gift.opening{animation:shake .6s linear}
+  .gift.opening .glid{animation:lidOff .9s .55s cubic-bezier(.3,.6,.4,1) forwards}
+  .gift.opening .gbox{animation:boxOut .5s 1s ease-in forwards}
+  @keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px) rotate(-5deg)}40%{transform:translateX(6px) rotate(5deg)}60%{transform:translateX(-5px) rotate(-4deg)}80%{transform:translateX(5px) rotate(3deg)}}
+  @keyframes lidOff{to{transform:translate(70px,-160px) rotate(60deg);opacity:0}}
+  @keyframes boxOut{to{transform:scale(.3);opacity:0}}
+  .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+  .confetti i{position:absolute;width:9px;height:14px;border-radius:2px;animation:burst 1.8s cubic-bezier(.15,.7,.4,1) forwards}
+  @keyframes burst{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
   .name{font-family:Fraunces,serif;font-weight:800;font-size:44px;color:#ffe7a8;margin:10px 0;animation:pop .5s ease}
   @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
   .reveal p{opacity:.92}
@@ -129,11 +145,15 @@
       <p>Appuie sur <b>Lancer le tirage</b>. Personne ne se tire soi-même, et deux personnes du <b>même groupe</b> (même nom dans la colonne Groupe : une famille, un couple, une équipe…) ne peuvent pas se tirer. Toi, tu ne vois jamais qui offre à qui.</p>
       <h3>📨 3. L'envoi</h3>
       <p><b>Envoyer au suivant</b> ouvre WhatsApp avec le message prêt pour la personne suivante : tu n'as plus qu'à l'envoyer. Si la personne n'a pas WhatsApp, utilise <b>Envoyer par SMS</b>.</p>
-      <p>Chaque personne reçoit un lien personnel : en l'ouvrant, elle touche le cadeau et découvre le nom. <b>N'ouvre pas les liens toi-même</b>, sinon tu connaîtras le résultat.</p>
+      <p>Chaque personne reçoit un lien personnel : en l'ouvrant, elle touche le cadeau, qui s'ouvre en musique, et découvre le nom. <b>N'ouvre pas les liens toi-même</b>, sinon tu connaîtras le résultat.</p>
       <h3>✅ Envoyé / Confirmé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Coche <b>confirmé</b> quand la personne t'a prévenu qu'elle a bien reçu son tirage. Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
       <p>Si quelqu'un ne participe plus, appuie sur <b>Retirer</b> à côté de son nom. L'appli redonne une personne à celui qui devait lui offrir un cadeau, sans refaire tout le tirage. Les personnes concernées apparaissent en jaune avec « à prévenir » : renvoie-leur leur nouveau lien, le message « changement » est déjà prêt.</p>
+      <h3>➕ Retardataire</h3>
+      <p>Quelqu'un arrive après le tirage&nbsp;? Dans l'étape 3, appuie sur <b>Ajouter un retardataire</b>, remplis ses informations puis <b>Ajouter au tirage</b>. Pas besoin de tout refaire&nbsp;: une seule personne change de destinataire. Elle apparaît en jaune avec « à prévenir », et le nouveau venu apparaît dans la liste&nbsp;: envoie-leur leur lien.</p>
+      <h3>🎄 Plusieurs Secret Santa</h3>
+      <p>En haut de la page, <b>Mes Secret Santa</b> permet d'en gérer plusieurs en même temps (famille, travail, amis…). <b>+ Nouveau</b> en crée un vide, le menu permet de passer de l'un à l'autre, et <b>Supprimer</b> efface celui qui est affiché. Chacun garde ses participants, son tirage et ses envois.</p>
       <h3>💾 Sauvegarde</h3>
       <p>Après le tirage, garde une copie (sur WhatsApp, en copiant le code ou en fichier). Le code commence par <b>SS1:</b> et reste illisible : tu peux le garder sans connaître le résultat.</p>
       <p>Pour retrouver ton tirage (autre téléphone, données effacées…), ouvre <b>Restaurer une sauvegarde</b>, colle le code ou ouvre le fichier, puis appuie sur <b>Restaurer</b>.</p>
@@ -142,6 +162,15 @@
   </dialog>
   <h1>🎅 Secret Santa<span id="groupTitle"></span></h1>
   <p class="sub">Tirage au sort avec exclusions par groupe. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
+
+  <div class="card ssBar">
+    <label for="ssSelect">🎄 Mes Secret Santa</label>
+    <div class="actions" style="margin-top:0;align-items:center">
+      <select id="ssSelect" style="flex:1;min-width:180px;font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fffdf9"></select>
+      <button class="btn ghost small" id="ssNew">+ Nouveau</button>
+      <button class="btn ghost small rm" id="ssDel">Supprimer</button>
+    </div>
+  </div>
 
   <div class="card">
     <h2><span class="step">1</span>Participants</h2>
@@ -201,6 +230,21 @@
     <a class="btn ghost small" id="nextSms" href="#" style="width:100%;justify-content:center;margin-bottom:6px">✉️ Pas de WhatsApp ? Envoyer par SMS</a>
     <p class="hint" id="nextInfo" style="text-align:center;margin:0 0 12px"></p>
     <div id="sendList"></div>
+    <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
+      <button class="btn ghost small" id="toggleLate">+ Ajouter un retardataire</button>
+      <div id="late" class="hidden" style="margin-top:10px">
+        <p class="hint" style="margin:0 0 8px">La personne entre dans le tirage sans tout refaire&nbsp;: une seule autre personne change de destinataire et devra recevoir un nouveau lien.</p>
+        <div class="row" style="border-bottom:none">
+          <input placeholder="Prénom" data-k="name" id="lateName">
+          <input placeholder="Nom" data-k="last" id="lateLast">
+          <input placeholder="Groupe" data-k="family" id="lateFamily">
+          <input placeholder="Âge" inputmode="numeric" data-k="age" id="lateAge">
+          <input placeholder="06…" inputmode="tel" data-k="phone" id="latePhone">
+          <span class="x"></span>
+        </div>
+        <div class="actions"><button class="btn primary small" id="lateAdd">Ajouter au tirage</button></div>
+      </div>
+    </div>
   </div>
 
   <div class="card" id="saveCard">
@@ -235,7 +279,8 @@
     <p id="groupLine" class="hidden" style="font-family:Fraunces,serif;font-size:20px;font-weight:600;color:#ffe7a8;margin:0"></p>
     <h1 id="hello">🎅 Secret Santa</h1>
     <p id="intro">Tu dois offrir un cadeau à…</p>
-    <div class="gift" id="gift" title="Ouvrir">🎁</div>
+    <div class="gift" id="gift" title="Ouvrir"><div class="glid"></div><div class="gbox"></div></div>
+    <div class="confetti" id="confetti"></div>
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
@@ -250,7 +295,14 @@
 <script>
 (function(){
   const KEY = "PereNoel-Lutins-2026-Traineau";
-  const LS = "secretSanta.v1";
+  // plusieurs Secret Santa : chacun a sa propre sauvegarde dans le navigateur
+  const LIST = "secretSanta.list";
+  const keyOf = id => id === "0" ? "secretSanta.v1" : "secretSanta.v1." + id;
+  let ssList = { cur:"0", ids:["0"] };
+  try{ const l = JSON.parse(localStorage.getItem(LIST)); if(l && Array.isArray(l.ids) && l.ids.length) ssList = l; }catch(e){}
+  if(!ssList.ids.includes(ssList.cur)) ssList.cur = ssList.ids[0];
+  const saveList = ()=>{ try{ localStorage.setItem(LIST, JSON.stringify(ssList)); }catch(e){} };
+  const LS = keyOf(ssList.cur);
   const $ = id => document.getElementById(id);
 
   // ---------- encodage du lien ----------
@@ -270,6 +322,39 @@
     return (parts.length >= 2 && parts.length <= 7) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||""} : null;
   }
 
+  // ---------- animation et musique d'ouverture ----------
+  function jingle(){
+    try{
+      const A = new (window.AudioContext || window.webkitAudioContext)();
+      const E = 659.25, G = 783.99, C = 523.25, D = 587.33, q = 0.2;
+      const notes = [[E,1],[E,1],[E,2],[E,1],[E,1],[E,2],[E,1],[G,1],[C,1.5],[D,.5],[E,4]];
+      let t = A.currentTime + 0.05;
+      notes.forEach(([f,d])=>{
+        [1, 2.01, 3.02].forEach((h,i)=>{ // son de clochette
+          const o = A.createOscillator(), g = A.createGain();
+          o.type = "sine"; o.frequency.value = f * h;
+          const v = [0.22, 0.07, 0.03][i];
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, t + Math.max(d*q, 0.15) + 0.35);
+          o.connect(g); g.connect(A.destination); o.start(t); o.stop(t + d*q + 0.4);
+        });
+        t += d * q;
+      });
+    }catch(e){}
+  }
+  function confetti(){
+    const box = $("confetti"), r = $("gift").getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const cols = ["#f3cf6b","#ffffff","#2fa36b","#ff6b6b","#ffe7a8"];
+    for(let i=0;i<80;i++){
+      const c = document.createElement("i"), a = Math.random()*Math.PI*2, v = 120 + Math.random()*260;
+      c.style.left = cx + "px"; c.style.top = cy + "px"; c.style.background = cols[i % cols.length];
+      c.style.setProperty("--dx", Math.cos(a)*v + "px"); c.style.setProperty("--dy", (Math.sin(a)*v + 160) + "px");
+      c.style.setProperty("--r", (Math.random()*720 - 360) + "deg"); c.style.animationDelay = Math.random()*0.15 + "s";
+      box.appendChild(c);
+    }
+    setTimeout(()=> box.innerHTML = "", 2300);
+  }
+
   // ---------- mode révélation ----------
   function showReveal(){
     const tok = location.hash.slice(1);
@@ -280,7 +365,12 @@
     $("hello").textContent = "🎅 Bonjour " + d.giver + " !";
     if(d.group){ $("groupLine").textContent = "Secret Santa " + d.group; $("groupLine").classList.remove("hidden"); document.title = "Secret Santa " + d.group; }
     $("target").textContent = d.receiver;
-    const open = ()=>{ $("gift").classList.add("hidden"); $("tap").classList.add("hidden");
+    let opening = false;
+    const open = ()=>{ if(opening) return; opening = true; $("tap").classList.add("hidden");
+      jingle(); $("gift").classList.add("opening");
+      setTimeout(confetti, 1000);
+      setTimeout(reveal, 1350); };
+    const reveal = ()=>{ $("gift").classList.add("hidden");
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
       if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
@@ -406,6 +496,34 @@
     return null;
   }
 
+  // ---------- retardataire ----------
+  function addLate(p){
+    const N = full(p);
+    if(!(p.name||"").trim()) return "Indique au moins le prénom.";
+    if(state.draw.some(t => t.name.toLowerCase() === N.toLowerCase())) return "« " + N + " » participe déjà. Ajoute son nom ou une initiale pour les distinguer.";
+    state.people = state.people.filter(q => full(q)).concat([p]);
+    const fam = {};
+    state.people.forEach(q=>{ const f = (q.family||"").trim().toLowerCase(); fam[full(q)] = f ? "f:"+f : "solo:"+full(q); });
+    const tgt = t => decode(t.token).receiver;
+    const ok = (g, r) => g !== r && fam[g] !== fam[r];
+    const G = shuffle(state.draw.slice()).find(t => ok(t.name, N) && ok(N, tgt(t)));
+    if(!G){ state.people.pop(); return "Impossible d'ajouter cette personne sans refaire un tirage complet (vérifie son groupe)."; }
+    const R = tgt(G);
+    G.token = tok(G.name, N); state.changed[G.name] = "ajout"; state.sent[G.name] = false; delete state.confirmed[G.name];
+    state.draw.push({name:N, phone:(p.phone||"").trim(), token:tok(N, R)});
+    save(); renderRows(); renderSend();
+    $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(N) + ' a été ajouté(e) au tirage. 2 personnes doivent recevoir un lien : ' + esc(N) + ' et ' + esc(G.name) + ' (en jaune ci-dessous, son destinataire a changé).</div>';
+    return null;
+  }
+  $("toggleLate").onclick = ()=> $("late").classList.toggle("hidden");
+  $("lateAdd").onclick = ()=>{
+    const p = {name:$("lateName").value.trim(), last:$("lateLast").value.trim(), family:$("lateFamily").value.trim(), age:$("lateAge").value.trim(), phone:$("latePhone").value.trim()};
+    const err = addLate(p);
+    if(err){ $("drawInfo").innerHTML = '<div class="err" style="display:block">' + esc(err) + '</div>'; return; }
+    ["lateName","lateLast","lateFamily","lateAge","latePhone"].forEach(id => $(id).value = ""); $("late").classList.add("hidden");
+    renderList();
+  };
+
   // ---------- tirage ----------
   function famKey(p, i){ const f = (p.family||"").trim().toLowerCase(); return f ? "f:" + f : "solo:" + i; }
   function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -484,7 +602,7 @@
       const bud = (state.budget ? "\n💶 Budget maximum : " + state.budget + " €" : "") + (w ? "\n📅 Remise des cadeaux : " + w : "") + ((state.budget || w) ? "\n" : "");
       const ch = state.changed && state.changed[t.name];
       const msg = ch
-        ? "🎅 " + ssTitle() + " : changement !\n\nBonjour " + t.name + ", suite à un désistement, la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
+        ? "🎅 " + ssTitle() + " : changement !\n\nBonjour " + t.name + ", suite " + (ch === "ajout" ? "à l'arrivée d'un nouveau participant" : "à un désistement") + ", la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
         : "🎅 " + ssTitle() + " !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
       const num = waNumber(t.phone);
       const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
@@ -590,6 +708,31 @@
   $("restoreBtn").onclick = ()=> restore($("restoreText").value);
   $("restoreFile").onchange = async (e)=>{ const f = e.target.files[0]; if(f) restore(await f.text()); e.target.value = ""; };
 
+  // ---------- liste des Secret Santa ----------
+  function ssLabel(id, i){
+    let st = null; try{ st = JSON.parse(localStorage.getItem(keyOf(id))); }catch(e){}
+    const g = st && st.group ? st.group : "";
+    const n = st && st.people ? st.people.filter(p => (p.name||"").trim()).length : 0;
+    return "Secret Santa " + (g || "n°" + (i+1)) + " (" + n + " participant" + (n>1?"s":"") + ")";
+  }
+  function renderList(){
+    const sel = $("ssSelect"); sel.innerHTML = "";
+    ssList.ids.forEach((id,i)=>{ const o = document.createElement("option"); o.value = id; o.textContent = ssLabel(id, i); o.selected = id === ssList.cur; sel.appendChild(o); });
+    $("ssDel").classList.toggle("hidden", ssList.ids.length < 2);
+  }
+  $("ssSelect").onchange = ()=>{ save(); ssList.cur = $("ssSelect").value; saveList(); location.reload(); };
+  $("ssNew").onclick = ()=>{ save(); const id = Date.now().toString(36); ssList.ids.push(id); ssList.cur = id; saveList(); location.reload(); };
+  let delArm = false;
+  $("ssDel").onclick = ()=>{
+    if(ssList.ids.length < 2) return;
+    if(!delArm){ delArm = true; $("ssDel").textContent = "Confirmer la suppression ?"; setTimeout(()=>{ delArm = false; $("ssDel").textContent = "Supprimer"; }, 3000); return; }
+    try{ localStorage.removeItem(LS); }catch(e){}
+    ssList.ids = ssList.ids.filter(x => x !== ssList.cur); ssList.cur = ssList.ids[0]; saveList(); location.reload();
+  };
+  $("group").addEventListener("input", renderList);
+  $("rows").addEventListener("input", renderList);
+  saveList(); renderList();
+
   renderRows();
   if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
   renderSend();
@@ -606,7 +749,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.5"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.6"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
