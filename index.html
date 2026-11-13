@@ -85,6 +85,9 @@
   .name{font-family:Fraunces,serif;font-weight:800;font-size:44px;color:#ffe7a8;margin:10px 0;animation:pop .5s ease}
   @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
   .reveal p{opacity:.92}
+  .wishBox{background:rgba(255,255,255,.12);border:1px solid rgba(255,231,168,.5);border-radius:12px;padding:12px 14px;margin:12px 0;text-align:left;font-size:16px}
+  .wishBox b{color:#ffe7a8}
+  .wishBox textarea{width:100%;box-sizing:border-box;margin-top:8px;font:inherit;font-size:15px;padding:8px;border-radius:8px;border:1px solid #e6d3a8;background:#fffdf9;color:#3a1a10;resize:vertical}
   .snow{position:fixed;inset:0;pointer-events:none;overflow:hidden}
   .snow span{position:absolute;top:-10px;color:#fff;opacity:.7;animation:fall linear infinite}
   @keyframes fall{to{transform:translateY(110vh)}}
@@ -149,6 +152,8 @@
       <p>Si tu as indiqué le téléphone d'une personne, son lien est protégé&nbsp;: pour voir le nom, elle doit saisir les <b>4 derniers chiffres de son numéro</b>. Quelqu'un qui tomberait sur le lien ne peut donc pas voir le résultat. Sans téléphone, le lien s'ouvre sans code (indiqué « lien sans code » dans la liste).</p>
       <h3>👀 Qui a ouvert son lien&nbsp;?</h3>
       <p>Sous chaque nom, l'appli indique « a ouvert son lien le … à … » dès que la personne a ouvert son cadeau, ou « lien pas encore ouvert ». C'est mis à jour tout seul. Seul un code anonyme est envoyé au serveur&nbsp;: ni nom, ni numéro, ni tirage.</p>
+      <h3>🎁 Idées cadeaux</h3>
+      <p>Sur sa page cadeau, sous le nom découvert, chacun peut écrire <b>Mes idées cadeaux</b> puis appuyer sur <b>Enregistrer</b>. La personne qui doit lui faire un cadeau les voit sur sa propre page, sous le nom, mises à jour toutes seules. Seule la personne peut modifier ses idées. Le serveur ne reçoit que les idées et un code anonyme&nbsp;: ni nom, ni numéro, ni tirage. Ne change pas le montant, la date ou la précision après l'envoi des liens, sinon les idées ne seront plus retrouvées.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -307,10 +312,18 @@
     <div class="confetti" id="confetti"></div>
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
+    <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="white-space:pre-line;margin-top:6px"></div></div>
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
+    <div id="myWish" class="wishBox hidden" style="margin-top:26px">
+      <b>📝 Mes idées cadeaux</b>
+      <textarea id="myWishTxt" maxlength="1000" rows="4" placeholder="Ex. : un livre de cuisine, des chaussettes rigolotes, un jeu de société…"></textarea>
+      <p style="font-size:13px;margin:4px 0 8px">La personne qui doit te faire un cadeau les verra sur sa page. Tu peux les modifier quand tu veux.</p>
+      <button class="btn" id="myWishSave" style="background:#f3cf6b;color:#5a1010">Enregistrer</button>
+      <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
+    </div>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
   </div>
 </div>
@@ -359,6 +372,9 @@
   }
 
   // ---------- verrou par les 4 derniers chiffres du téléphone ----------
+  // idées cadeaux : rangées sous un code calculé à partir du nom et des infos communes du tirage (aucun nom envoyé)
+  function wishKey(name, d){ const base = "souhaits|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+    return "w" + h32(base).toString(36).padStart(7,"0") + h32("SW2|" + base).toString(36).padStart(7,"0"); }
   function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
   function h32(str){ let h = 2166136261; for(const c of new TextEncoder().encode(str)){ h ^= c; h = Math.imul(h, 16777619) >>> 0; } return h; }
   function stream(seed, n){ let x = seed || 1; const out = []; for(let i=0;i<n;i++){ x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out.push(x & 255); } return out; }
@@ -471,7 +487,8 @@
       $("pin").onkeydown = e => { if(e.key === "Enter") check(); };
       $("pin").oninput = ()=>{ $("pinErr").classList.add("hidden"); };
     } else ready();
-    const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau opening = true; $("tap").classList.add("hidden");
+    const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau
+      opening = true; $("tap").classList.add("hidden");
       jingle(); $("gift").classList.add("opening");
       setTimeout(confetti, 1000);
       setTimeout(reveal, 1350); };
@@ -479,7 +496,31 @@
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
       if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
-      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); } };
+      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); }
+      wishes(); };
+    const wishes = ()=>{
+      // idées de la personne à qui j'offre (mises à jour toutes seules)
+      const hisKey = wishKey(d.receiver, d);
+      const loadHis = ()=> fetch(API + "/souhaits?k=" + hisKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
+        const t = (j.texte || "").trim();
+        $("hisWishTxt").textContent = t || "Pas encore d'idée pour le moment. Elles s'afficheront ici dès qu'elle en aura écrit.";
+        $("hisWish").classList.remove("hidden");
+      }).catch(()=>{});
+      loadHis(); setInterval(loadHis, 60000);
+      document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) loadHis(); });
+      // mes propres idées (seulement si le lien a un code anonyme)
+      if(!d.vid) return;
+      const myKey = wishKey(d.giver, d);
+      $("myWish").classList.remove("hidden");
+      fetch(API + "/souhaits?k=" + myKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.texte && !$("myWishTxt").value) $("myWishTxt").value = j.texte; }).catch(()=>{});
+      $("myWishTxt").oninput = ()=>{ $("myWishMsg").textContent = ""; };
+      $("myWishSave").onclick = ()=>{
+        $("myWishMsg").textContent = "Enregistrement…";
+        fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myKey, id:d.vid, texte:$("myWishTxt").value.trim()})})
+          .then(r => { $("myWishMsg").textContent = r.ok ? "✅ Enregistré" : "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; })
+          .catch(()=>{ $("myWishMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
+      };
+    };
     $("gift").onclick = open;
     const s = $("snow");
     for(let i=0;i<30;i++){ const f=document.createElement("span"); f.textContent="❄";
@@ -1098,7 +1139,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.4"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.5"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
