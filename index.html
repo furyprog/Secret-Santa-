@@ -714,9 +714,10 @@
       const w = whenText();
       const bud = (state.budget ? "\n💶 Budget maximum : " + state.budget + " €" : "") + (w ? "\n📅 Remise des cadeaux : " + w : "") + ((state.budget || w) ? "\n" : "");
       const ch = state.changed && state.changed[t.name];
+      const pp = state.people.find(q => full(q) === t.name), first = pp ? pp.name.trim() : t.name;
       const msg = ch
-        ? "🎅 " + ssTitle() + " : changement !\n\nBonjour " + t.name + ", suite " + (ch === "ajout" ? "à l'arrivée d'un nouveau participant" : "à un désistement") + ", la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
-        : "🎅 " + ssTitle() + " !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
+        ? "🎅 " + ssTitle() + " : changement !\n\nBonjour,\n" + first + ", suite " + (ch === "ajout" ? "à l'arrivée d'un nouveau participant" : "à un désistement") + ", la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
+        : "🎅 " + ssTitle() + " !\n\nBonjour,\n" + first + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
       const num = waNumber(t.phone);
       const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
       const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -945,7 +946,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.10"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.11"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
