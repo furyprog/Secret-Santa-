@@ -121,16 +121,17 @@
   .helpBtn{position:absolute;top:14px;right:16px;z-index:20;width:48px;height:48px;padding:0;border:none;background:none;cursor:pointer;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4));transition:transform .2s}
   .helpBtn:hover{transform:rotate(-8deg) scale(1.08)}
   .helpBtn img{width:100%;height:100%;display:block}
-  #help{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
-  #help::backdrop{background:rgba(10,30,20,.6)}
-  #help .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
-  #help .hd img{width:32px;height:32px}
-  #help .hd h2{color:#fff;margin:0;flex:1}
-  #help .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
-  #help .bd{padding:6px 18px 18px;font-size:15px}
-  #help h3{font-family:Fraunces,serif;font-size:17px;color:var(--green);margin:16px 0 4px}
-  #help p,#help ul{margin:4px 0}
-  #help ul{padding-left:20px}
+  #help,#helpP{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+  #help::backdrop,#helpP::backdrop{background:rgba(10,30,20,.6)}
+  #help .hd,#helpP .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
+  #help .hd img,#helpP .hd img{width:32px;height:32px}
+  #help .hd h2,#helpP .hd h2{color:#fff;margin:0;flex:1}
+  #help .hd button,#helpP .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
+  #help .bd,#helpP .bd{padding:6px 18px 18px;font-size:15px}
+  #help h3,#helpP h3{font-family:Fraunces,serif;font-size:17px;color:var(--green);margin:16px 0 4px}
+  #help p,#help ul,#helpP p,#helpP ul{margin:4px 0}
+  #help ul,#helpP ul{padding-left:20px}
+  #helpP .bd{text-align:left}
 </style>
 </head>
 <body>
@@ -303,6 +304,23 @@
 
 <!-- ========== RÉVÉLATION ========== -->
 <div id="reveal" class="reveal hidden">
+  <button class="helpBtn" id="helpPBtn" title="Aide" aria-label="Aide"><img src="help.svg" alt="Aide"></button>
+  <dialog id="helpP">
+    <div class="hd"><img src="help.svg" alt=""><h2>Comment ça marche ?</h2><button id="helpPClose" aria-label="Fermer">×</button></div>
+    <div class="bd">
+      <h3>🎁 Découvrir ton tirage</h3>
+      <p>Si on te le demande, saisis les <b>4 derniers chiffres de ton numéro de téléphone</b> puis appuie sur <b>OK</b>. Touche ensuite le cadeau&nbsp;: il s'ouvre en musique et affiche le nom de la personne à qui tu dois faire un cadeau, avec son âge, le budget et la date de remise s'ils ont été indiqués.</p>
+      <h3>🤫 Garde le secret</h3>
+      <p>Personne d'autre que toi ne voit ce nom, pas même l'organisateur. Ne transmets pas ton lien.</p>
+      <h3>📝 Tes cadeaux souhaités</h3>
+      <p>Dans <b>Saisis ici les cadeaux qui te feraient plaisir</b>, écris un cadeau par ligne. Tu peux ajouter le <b>lien vers la boutique</b> qui le vend&nbsp;: copie l'adresse de la page du produit et colle-la dans la case en dessous. <b>+ Ajouter un cadeau</b> ajoute une ligne, la croix <b>×</b> l'enlève. Appuie sur <b>Enregistrer</b>&nbsp;: la personne qui doit te faire un cadeau les verra sur sa page.</p>
+      <h3>🎁 Ses idées cadeaux</h3>
+      <p>Sous le nom découvert, tu vois les cadeaux souhaités par la personne à qui tu offres, avec un lien 🛒 vers la boutique quand elle en a mis un. La liste se met à jour toute seule.</p>
+      <h3>🔁 Revenir plus tard</h3>
+      <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
+      <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
+    </div>
+  </dialog>
   <div class="snow" id="snow"></div>
   <div class="box">
     <p id="groupLine" class="hidden" style="font-family:Fraunces,serif;font-size:20px;font-weight:600;color:#ffe7a8;margin:0"></p>
@@ -478,6 +496,9 @@
     if(!d) return false;
     $("admin").classList.add("hidden");
     $("reveal").classList.remove("hidden");
+    const hp = $("helpP");
+    $("helpPBtn").onclick = ()=>{ if(hp.showModal) hp.showModal(); else hp.setAttribute("open",""); };
+    $("helpPClose").onclick = ()=>{ if(hp.close) hp.close(); else hp.removeAttribute("open"); };
     $("hello").textContent = "🎅 Bonjour,\n" + (d.first || d.giver) + " !";
     if(d.group){ $("groupLine").textContent = "Secret Santa " + d.group; $("groupLine").classList.remove("hidden"); document.title = "Secret Santa " + d.group; }
     let opening = false;
@@ -1176,7 +1197,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.9"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.10"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
