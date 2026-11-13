@@ -146,6 +146,8 @@
       <h3>📨 3. L'envoi</h3>
       <p><b>Envoyer au suivant</b> ouvre WhatsApp avec le message prêt pour la personne suivante : tu n'as plus qu'à l'envoyer. Si la personne n'a pas WhatsApp, utilise <b>Envoyer par SMS</b>.</p>
       <p>Chaque personne reçoit un lien personnel : en l'ouvrant, elle touche le cadeau, qui s'ouvre en musique, et découvre le nom. <b>N'ouvre pas les liens toi-même</b>, sinon tu connaîtras le résultat.</p>
+      <h3>🔒 Liens protégés</h3>
+      <p>Si tu as indiqué le téléphone d'une personne, son lien est protégé&nbsp;: pour voir le nom, elle doit saisir les <b>4 derniers chiffres de son numéro</b>. Quelqu'un qui tomberait sur le lien ne peut donc pas voir le résultat. Sans téléphone, le lien s'ouvre sans code (indiqué « lien sans code » dans la liste).</p>
       <h3>✅ Envoyé / Confirmé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Coche <b>confirmé</b> quand la personne t'a prévenu qu'elle a bien reçu son tirage. Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -290,6 +292,14 @@
     <p id="groupLine" class="hidden" style="font-family:Fraunces,serif;font-size:20px;font-weight:600;color:#ffe7a8;margin:0"></p>
     <h1 id="hello">🎅 Secret Santa</h1>
     <p id="intro">Tu dois offrir un cadeau à…</p>
+    <div id="pinBox" class="hidden" style="margin:18px 0">
+      <p style="font-weight:600">🔒 Pour découvrir ton tirage, saisis les 4 derniers chiffres de ton numéro de téléphone</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+        <input id="pin" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" style="width:130px;text-align:center;font-size:26px;letter-spacing:8px;padding:8px">
+        <button class="btn" id="pinOk" style="background:#f3cf6b;color:#5a1010">OK</button>
+      </div>
+      <p id="pinErr" class="hidden" style="color:#ffe7a8;font-weight:600">Ce ne sont pas les bons chiffres. Réessaie.</p>
+    </div>
     <div class="gift" id="gift" title="Ouvrir"><div class="glid"></div><div class="gbox"></div></div>
     <div class="confetti" id="confetti"></div>
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
@@ -332,6 +342,24 @@
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
     return (parts.length >= 2 && parts.length <= 7) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||""} : null;
+  }
+
+  // ---------- verrou par les 4 derniers chiffres du téléphone ----------
+  function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
+  function h32(str){ let h = 2166136261; for(const c of new TextEncoder().encode(str)){ h ^= c; h = Math.imul(h, 16777619) >>> 0; } return h; }
+  function stream(seed, n){ let x = seed || 1; const out = []; for(let i=0;i<n;i++){ x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out.push(x & 255); } return out; }
+  function lock(text, pin, giver){
+    const b = new TextEncoder().encode(text), k = stream(h32("SS|" + pin + "|" + giver), b.length);
+    let hex = (h32(pin + "|" + giver + "|" + text) & 255).toString(16).padStart(2,"0");
+    b.forEach((x,i)=> hex += (x ^ k[i]).toString(16).padStart(2,"0"));
+    return "~" + hex;
+  }
+  function unlock(field, pin, giver){
+    if(!/^~[0-9a-f]+$/.test(field) || field.length % 2 === 0) return null;
+    const hex = field.slice(3), b = new Uint8Array(hex.length/2), k = stream(h32("SS|" + pin + "|" + giver), b.length);
+    for(let i=0;i<b.length;i++) b[i] = parseInt(hex.substr(i*2,2),16) ^ k[i];
+    const text = new TextDecoder().decode(b);
+    return (h32(pin + "|" + giver + "|" + text) & 255) === parseInt(field.substr(1,2),16) ? text : null;
   }
 
   // ---------- animation et musique d'ouverture ----------
@@ -413,8 +441,21 @@
     $("reveal").classList.remove("hidden");
     $("hello").textContent = "🎅 Bonjour " + d.giver + " !";
     if(d.group){ $("groupLine").textContent = "Secret Santa " + d.group; $("groupLine").classList.remove("hidden"); document.title = "Secret Santa " + d.group; }
-    $("target").textContent = d.receiver;
     let opening = false;
+    const ready = ()=>{ $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
+    if(d.receiver.startsWith("~")){ // lien protégé : il faut les 4 derniers chiffres du téléphone
+      $("gift").classList.add("hidden"); $("tap").classList.add("hidden"); $("pinBox").classList.remove("hidden");
+      const lockField = d.receiver;
+      const check = ()=>{
+        const pin = $("pin").value.replace(/\D/g,"");
+        const txt = pin.length === 4 ? unlock(lockField, pin, d.giver) : null;
+        if(txt === null){ $("pinErr").classList.remove("hidden"); $("pin").select(); return; }
+        const [r, a] = txt.split("\u0001"); d.receiver = r; d.age = a || ""; ready();
+      };
+      $("pinOk").onclick = check;
+      $("pin").onkeydown = e => { if(e.key === "Enter") check(); };
+      $("pin").oninput = ()=>{ $("pinErr").classList.add("hidden"); if($("pin").value.replace(/\D/g,"").length === 4) check(); };
+    } else ready();
     const open = ()=>{ if(opening) return; opening = true; $("tap").classList.add("hidden");
       jingle(); $("gift").classList.add("opening");
       setTimeout(confetti, 1000);
@@ -488,7 +529,18 @@
   };
 
   // ---------- budget / organisateur ----------
-  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText(), ageOf(r)); }
+  function phoneOf(n){ const p = state.people.find(q => full(q) === n); return p ? p.phone : ""; }
+  function tok(g, r){
+    const pin = pinOf(phoneOf(g)), age = ageOf(r);
+    if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, waNumber(state.orgPhone), state.group, whenText(), "");
+    return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText(), age);
+  }
+  function recv(t){ // destinataire en clair (l'organisateur connaît les téléphones)
+    const d = decode(t.token); if(!d) return null;
+    if(!d.receiver.startsWith("~")) return d.receiver;
+    const txt = unlock(d.receiver, pinOf(t.phone || phoneOf(t.name)), t.name);
+    return txt === null ? null : txt.split("\u0001")[0];
+  }
   function fmtDate(v){ const [y,m,d] = v.split("-").map(Number); return new Date(y, m-1, d).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long", year:"numeric"}); }
   function whenText(){
     const a = state.dateFrom, b = state.dateTo;
@@ -510,7 +562,7 @@
   $("budget").oninput = ()=>{ state.budget = $("budget").value.trim(); settingsChanged("Le montant a changé"); };
   function settingsChanged(what){
     if(state.draw){
-      state.draw.forEach(t=>{ const d = decode(t.token); if(d) t.token = tok(t.name, d.receiver); });
+      state.draw.forEach(t=>{ const r = recv(t); if(r !== null) t.token = tok(t.name, r); });
       state.sent = {};
       $("drawInfo").innerHTML = '<div class="err" style="display:block">' + what + ' : le tirage reste le même, mais renvoie les liens à tout le monde pour que ce soit pris en compte.</div>';
       renderSend();
@@ -523,7 +575,7 @@
     const D = state.draw, fam = {};
     state.people.forEach((p,i)=>{ const f = (p.family||"").trim().toLowerCase(); fam[full(p)] = f ? "f:"+f : "solo:"+full(p); });
     if(D.length <= 3) return "Il faut au moins 3 participants restants.";
-    const tgt = t => decode(t.token).receiver;
+    const tgt = t => recv(t);
     const ok = (g, r) => g !== r && fam[g] !== fam[r];
     const G = D.find(t => tgt(t) === name), X = D.find(t => t.name === name);
     const R = tgt(X);
@@ -554,7 +606,7 @@
     state.people = state.people.filter(q => full(q)).concat([p]);
     const fam = {};
     state.people.forEach(q=>{ const f = (q.family||"").trim().toLowerCase(); fam[full(q)] = f ? "f:"+f : "solo:"+full(q); });
-    const tgt = t => decode(t.token).receiver;
+    const tgt = t => recv(t);
     const ok = (g, r) => g !== r && fam[g] !== fam[r];
     const G = shuffle(state.draw.slice()).find(t => ok(t.name, N) && ok(N, tgt(t)));
     if(!G){ state.people.pop(); return "Impossible d'ajouter cette personne sans refaire un tirage complet (vérifie son groupe)."; }
@@ -660,7 +712,7 @@
       const sms = "sms:" + (num ? "+" + num : "") + (ios ? "&" : "?") + "body=" + encodeURIComponent(msg);
       return {msg, wa, num, ch, sms};
   }
-  function ROW(t, wa, num, ch, sms){ return `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}</small></div>
+  function ROW(t, wa, num, ch, sms){ return `<div class="who"><b>${esc(t.name)}${ch ? '<span class="tag">à prévenir</span>' : ''}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}${pinOf(t.phone) ? " · 🔒 protégé" : " · ⚠️ lien sans code"}</small></div>
         <a class="btn wa small" href="${wa}" target="_blank" rel="noopener">Envoyer</a>
         <a class="btn ghost small sms" href="${sms}">SMS</a>
         <button class="btn ghost small cp">Copier</button>
@@ -853,7 +905,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.8"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.9"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
