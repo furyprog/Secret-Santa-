@@ -150,8 +150,8 @@
       <p>Si tu as indiqué le téléphone d'une personne, son lien est protégé&nbsp;: pour voir le nom, elle doit saisir les <b>4 derniers chiffres de son numéro</b>. Quelqu'un qui tomberait sur le lien ne peut donc pas voir le résultat. Sans téléphone, le lien s'ouvre sans code (indiqué « lien sans code » dans la liste).</p>
       <h3>👀 Qui a ouvert son lien&nbsp;?</h3>
       <p>Sous chaque nom, l'appli indique « a ouvert son lien le … à … » dès que la personne a ouvert son cadeau, ou « lien pas encore ouvert ». C'est mis à jour tout seul. Seul un code anonyme est envoyé au serveur&nbsp;: ni nom, ni numéro, ni tirage.</p>
-      <h3>✅ Envoyé / Confirmé</h3>
-      <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Coche <b>confirmé</b> quand la personne t'a prévenu qu'elle a bien reçu son tirage. Tu vois ainsi d'un coup d'œil où tu en es.</p>
+      <h3>✅ Envoyé</h3>
+      <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
       <p>Si quelqu'un ne participe plus, appuie sur <b>Retirer</b> à côté de son nom. L'appli redonne une personne à celui qui devait lui offrir un cadeau, sans refaire tout le tirage. Les personnes concernées apparaissent en jaune avec « à prévenir » : renvoie-leur leur nouveau lien, le message « changement » est déjà prêt.</p>
       <h3>➕ Retardataire</h3>
@@ -739,7 +739,6 @@
         <a class="btn ghost small sms" href="${sms}">SMS</a>
         <button class="btn ghost small cp">Copier</button>
         <label class="chk"><input type="checkbox" class="cs" ${state.sent[t.name]?"checked":""}> envoyé</label>
-        <label class="chk"><input type="checkbox" class="cc" ${state.confirmed[t.name]?"checked":""}> confirmé</label>
         <button class="btn ghost small rm">Retirer</button>`; }
   function seenTxt(t){
     if(!t.vid) return "";
@@ -789,7 +788,6 @@
   document.addEventListener("visibilitychange", refreshSeen);
   function bindRow(row, t, msg){
       const cb = row.querySelector(".cs");
-      row.querySelector(".cc").onchange = (e)=>{ state.confirmed[t.name] = e.target.checked; save(); renderNext(); };
       const mark = v => { state.sent[t.name] = v; cb.checked = v; row.classList.toggle("done", v); save(); renderNext(); };
       row.querySelector(".wa").addEventListener("click", ()=> mark(true));
       row.querySelector(".sms").addEventListener("click", ()=> mark(true));
@@ -814,9 +812,8 @@
     todo.sort((a,b)=> (state.changed[b.name]?1:0) - (state.changed[a.name]?1:0));
     nextT = todo[0] || null;
     const btn = $("nextBtn");
-    const nConf = state.draw.filter(t => state.confirmed[t.name]).length;
     const nSeen = state.draw.filter(t => t.vid && (state.seen||{})[t.vid]).length;
-    const confTxt = "  •  Liens ouverts : " + nSeen + "/" + state.draw.length + "  •  Confirmés : " + nConf + "/" + state.draw.length;
+    const confTxt = "  •  Liens ouverts : " + nSeen + "/" + state.draw.length;
     if(!nextT){ btn.classList.add("hidden"); $("nextSms").classList.add("hidden"); $("nextInfo").textContent = "✅ Tout le monde a reçu son message." + confTxt; return; }
     btn.classList.remove("hidden"); $("nextSms").classList.remove("hidden");
     btn.href = msgFor(nextT).wa; $("nextSms").href = msgFor(nextT).sms;
@@ -976,7 +973,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.16"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.17"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
