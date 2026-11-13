@@ -123,7 +123,7 @@
         <li><b>Précision</b> : un texte affiché après « Secret Santa » (ex. « de la famille Martin »).</li>
         <li><b>Date</b> : une seule date pour une réception, ou deux dates pour une période de remise.</li>
         <li><b>Montant maximum</b> : le budget du cadeau, rappelé à chacun.</li>
-        <li><b>Ton numéro</b> : chaque participant pourra te confirmer qu'il a bien reçu son tirage.</li>
+        <li><b>Numéro de téléphone de l'organisateur</b> : chaque participant pourra te confirmer qu'il a bien reçu son tirage.</li>
       </ul>
       <h3>🎲 2. Le tirage</h3>
       <p>Appuie sur <b>Lancer le tirage</b>. Personne ne se tire soi-même, et deux personnes du <b>même groupe</b> (même nom dans la colonne Groupe : une famille, un couple, une équipe…) ne peuvent pas se tirer. Toi, tu ne vois jamais qui offre à qui.</p>
@@ -160,12 +160,13 @@
       <p class="hint">Une seule date pour une réception, ou les deux pour une période. <span id="whenPreview"></span></p>
     </div>
     <div style="margin:0 0 14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start">
-        <div><label for="budget">Montant maximum du cadeau (€)</label>
-        <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20"></div>
-        <div><label for="orgPhone">Ton numéro (organisateur)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:8px;align-items:end">
+        <label for="budget">Montant maximum du cadeau (€)</label>
+        <label for="orgPhone">Numéro de téléphone de l'organisateur</label>
+        <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
         <input id="orgPhone" type="tel" inputmode="tel" placeholder="06…">
-        <p class="hint">Pour que chacun puisse te confirmer qu'il a bien reçu son tirage.</p></div>
+        <span></span>
+        <p class="hint">Pour que chacun puisse te confirmer qu'il a bien reçu son tirage.</p>
       </div>
     </div>
     <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
@@ -605,7 +606,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.3"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.4"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
