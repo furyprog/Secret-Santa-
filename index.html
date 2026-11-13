@@ -29,7 +29,13 @@
   input:focus,textarea:focus{outline:2px solid var(--gold);border-color:transparent}
   textarea{min-height:120px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
   .hint{font-size:13px;color:var(--muted);margin:6px 0 0}
-  .row{display:grid;grid-template-columns:1.2fr 1fr 1.3fr 34px;gap:6px;margin-bottom:6px;align-items:center}
+  .row{display:grid;grid-template-columns:1fr 1fr 1fr 58px 1.2fr 34px;gap:6px;margin-bottom:6px;align-items:center}
+  @media (max-width:560px){
+    .row{grid-template-columns:1fr 1fr 58px;grid-template-areas:"p n a" "g t x";padding-bottom:6px;border-bottom:1px dashed var(--line)}
+    .row.head{display:none}
+    .row [data-k=name]{grid-area:p}.row [data-k=last]{grid-area:n}.row [data-k=age]{grid-area:a}
+    .row [data-k=family]{grid-area:g}.row [data-k=phone]{grid-area:t}.row .x{grid-area:x;justify-self:end}
+  }
   .row.head{font-size:12px;font-weight:600;color:var(--muted)}
   .row input{padding:7px 8px;font-size:14px}
   .x{border:none;background:none;color:var(--muted);font-size:20px;cursor:pointer}
@@ -110,8 +116,8 @@
     <div class="hd"><img src="help.svg" alt=""><h2>Comment ça marche ?</h2><button id="helpClose" aria-label="Fermer">×</button></div>
     <div class="bd">
       <h3>👥 1. Les participants</h3>
-      <p>Écris le <b>prénom</b>, la <b>famille</b> et le <b>téléphone</b> de chaque personne. Le bouton <b>+ Ajouter</b> ajoute une ligne, la croix <b>×</b> en supprime une.</p>
-      <p><b>Coller une liste</b> : colle plusieurs personnes d'un coup, une par ligne, sous la forme <i>Prénom ; Famille ; Téléphone</i>, puis appuie sur <b>Importer</b>.</p>
+      <p>Écris le <b>prénom</b> de chaque personne, et si tu veux son <b>nom</b>, son <b>groupe</b>, son <b>âge</b> et son <b>téléphone</b>. L'âge est indiqué à celui qui lui offre un cadeau, pour l'aider à choisir. Le bouton <b>+ Ajouter</b> ajoute une ligne, la croix <b>×</b> en supprime une.</p>
+      <p><b>Coller une liste</b> : colle plusieurs personnes d'un coup, une par ligne, sous la forme <i>Prénom ; Nom ; Groupe ; Âge ; Téléphone</i> (les cases vides sont permises), puis appuie sur <b>Importer</b>.</p>
       <h3>⚙️ Les réglages (facultatifs)</h3>
       <ul>
         <li><b>Précision</b> : un texte affiché après « Secret Santa » (ex. « de la famille Martin »).</li>
@@ -120,7 +126,7 @@
         <li><b>Ton numéro</b> : chaque participant pourra te confirmer qu'il a bien reçu son tirage.</li>
       </ul>
       <h3>🎲 2. Le tirage</h3>
-      <p>Appuie sur <b>Lancer le tirage</b>. Personne ne se tire soi-même, et deux personnes de la <b>même famille</b> (même nom dans la colonne Famille) ne peuvent pas se tirer. Toi, tu ne vois jamais qui offre à qui.</p>
+      <p>Appuie sur <b>Lancer le tirage</b>. Personne ne se tire soi-même, et deux personnes du <b>même groupe</b> (même nom dans la colonne Groupe : une famille, un couple, une équipe…) ne peuvent pas se tirer. Toi, tu ne vois jamais qui offre à qui.</p>
       <h3>📨 3. L'envoi</h3>
       <p><b>Envoyer au suivant</b> ouvre WhatsApp avec le message prêt pour la personne suivante : tu n'as plus qu'à l'envoyer. Si la personne n'a pas WhatsApp, utilise <b>Envoyer par SMS</b>.</p>
       <p>Chaque personne reçoit un lien personnel : en l'ouvrant, elle touche le cadeau et découvre le nom. <b>N'ouvre pas les liens toi-même</b>, sinon tu connaîtras le résultat.</p>
@@ -135,11 +141,11 @@
     </div>
   </dialog>
   <h1>🎅 Secret Santa<span id="groupTitle"></span></h1>
-  <p class="sub">Tirage au sort avec exclusions par famille. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
+  <p class="sub">Tirage au sort avec exclusions par groupe. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
 
   <div class="card">
     <h2><span class="step">1</span>Participants</h2>
-    <p class="hint" style="margin:0 0 10px">Deux personnes de la <b>même famille</b> (même nom dans la colonne Famille) ne pourront pas se tirer. Laisse Famille vide si la personne n'a pas de restriction.</p>
+    <p class="hint" style="margin:0 0 10px">Deux personnes du <b>même groupe</b> (même nom dans la colonne Groupe, par exemple une famille ou un couple) ne pourront pas se tirer. Laisse Groupe vide si la personne n'a pas de restriction. Le nom et l'âge sont facultatifs&nbsp;: l'âge est indiqué à celui qui offre le cadeau.</p>
     <div style="margin:0 0 14px">
       <label for="group">Précision après « Secret Santa » (facultatif)</label>
       <input id="group" type="text" placeholder="ex. de l'association Les Amis, de la classe 2…">
@@ -162,7 +168,7 @@
       <input id="orgPhone" type="tel" inputmode="tel" placeholder="06…">
       <p class="hint">Pour que chacun puisse te confirmer qu'il a bien reçu son tirage.</p>
     </div>
-    <div class="row head"><span>Prénom</span><span>Famille</span><span>Téléphone</span><span></span></div>
+    <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
     <div id="rows"></div>
     <div class="actions">
       <button class="btn ghost small" id="addRow">+ Ajouter</button>
@@ -170,8 +176,9 @@
       <button class="btn ghost small" id="clearAll">Tout effacer</button>
     </div>
     <div id="bulk" class="hidden" style="margin-top:12px">
-      <label>Une personne par ligne&nbsp;: Prénom ; Famille ; Téléphone</label>
-      <textarea id="bulkText" placeholder="Marie ; Dupont ; 06 12 34 56 78&#10;Paul ; Dupont ; 06 98 76 54 32&#10;Léa ; Martin ; +33 7 11 22 33 44"></textarea>
+      <label>Une personne par ligne&nbsp;: Prénom ; Nom ; Groupe ; Âge ; Téléphone</label>
+      <textarea id="bulkText" placeholder="Marie ; Dupont ; Famille Dupont ; 8 ; 06 12 34 56 78&#10;Paul ; Dupont ; Famille Dupont ; ; 06 98 76 54 32&#10;Léa ; Martin ; ; 35 ; +33 7 11 22 33 44"></textarea>
+      <p class="hint">Les cases vides sont permises (laisse juste les « ; »). L'âge et le téléphone sont reconnus tout seuls.</p>
       <div class="actions"><button class="btn primary small" id="importBulk">Importer</button></div>
     </div>
     <p class="hint" id="count"></p>
@@ -217,7 +224,7 @@
     </details>
   </div>
 
-  <p class="credit" style="text-align:center;font-size:12px;color:var(--muted);margin-top:24px">Appli réalisée par Th.Roussel</p>
+  <p class="credit" style="text-align:center;font-size:12px;color:var(--muted);margin-top:24px">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
 </div>
 
 <!-- ========== RÉVÉLATION ========== -->
@@ -230,11 +237,12 @@
     <div class="gift" id="gift" title="Ouvrir">🎁</div>
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
+    <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
     <a id="confirmBtn" class="btn wa hidden" target="_blank" rel="noopener" style="margin:14px 0 4px">✅ C'est noté, prévenir l'organisateur</a>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
-    <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel</p>
+    <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
   </div>
 </div>
 
@@ -245,8 +253,8 @@
   const $ = id => document.getElementById(id);
 
   // ---------- encodage du lien ----------
-  function encode(giver, receiver, budget, org, group, when){
-    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/") + "|" + (when||""));
+  function encode(giver, receiver, budget, org, group, when, age){
+    const bytes = new TextEncoder().encode(giver + "|" + receiver + "|" + (budget||"") + "|" + (org||"") + "|" + String(group||"").replace(/\|/g,"/") + "|" + (when||"") + (age ? "|" + age : ""));
     let sum = 0, hex = "";
     bytes.forEach((b,i)=>{ sum = (sum + b) & 255; const x = b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); hex += x.toString(16).padStart(2,"0"); });
     return "s" + hex + sum.toString(16).padStart(2,"0");
@@ -258,7 +266,7 @@
     for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
-    return (parts.length >= 2 && parts.length <= 6) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||""} : null;
+    return (parts.length >= 2 && parts.length <= 7) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||""} : null;
   }
 
   // ---------- mode révélation ----------
@@ -274,6 +282,7 @@
     const open = ()=>{ $("gift").classList.add("hidden"); $("tap").classList.add("hidden");
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
+      if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
       if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); }
       if(d.org){ const c = $("confirmBtn"); c.href = "https://wa.me/" + d.org + "?text=" + encodeURIComponent("✅ " + d.giver + " a bien reçu son Secret Santa 🎅"); c.classList.remove("hidden"); } };
     $("gift").onclick = open;
@@ -287,7 +296,7 @@
   window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
 
   // ---------- état organisateur ----------
-  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], budget:"", orgPhone:"", group:"", dateFrom:"", dateTo:"", draw:null, sent:{}, changed:{}, confirmed:{} };
+  let state = { people:[{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""}], budget:"", orgPhone:"", group:"", dateFrom:"", dateTo:"", draw:null, sent:{}, changed:{}, confirmed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
   const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} };
 
@@ -296,7 +305,9 @@
     state.people.forEach((p,i)=>{
       const r = document.createElement("div"); r.className = "row";
       r.innerHTML = `<input placeholder="Prénom" value="${esc(p.name)}" data-k="name">
-        <input placeholder="Famille" value="${esc(p.family)}" data-k="family">
+        <input placeholder="Nom" value="${esc(p.last)}" data-k="last">
+        <input placeholder="Groupe" value="${esc(p.family)}" data-k="family">
+        <input placeholder="Âge" inputmode="numeric" value="${esc(p.age)}" data-k="age">
         <input placeholder="06…" inputmode="tel" value="${esc(p.phone)}" data-k="phone">
         <button class="x" title="Supprimer">×</button>`;
       r.querySelectorAll("input").forEach(inp=> inp.oninput = ()=>{ p[inp.dataset.k] = inp.value; invalidate(); save(); updateCount(); });
@@ -306,27 +317,37 @@
     updateCount();
   }
   function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function full(p){ return ((p.name||"").trim() + " " + (p.last||"").trim()).trim(); }
+  function ageOf(n){ const p = state.people.find(q => full(q) === n); return p && /^\d{1,3}$/.test(String(p.age||"").trim()) ? String(p.age).trim() : ""; }
   function valid(){ return state.people.filter(p=>p.name.trim()); }
   function updateCount(){ const n = valid().length; $("count").textContent = n + " participant" + (n>1?"s":""); }
   function invalidate(){ if(state.draw){ state.draw = null; state.sent = {}; renderSend(); $("drawInfo").innerHTML = '<div class="err" style="display:block">La liste a changé : le tirage précédent est annulé, relance-le.</div>'; } }
 
-  $("addRow").onclick = ()=>{ state.people.push({name:"",family:"",phone:""}); save(); renderRows(); };
+  $("addRow").onclick = ()=>{ state.people.push({name:"",last:"",family:"",age:"",phone:""}); save(); renderRows(); };
   $("toggleBulk").onclick = ()=> $("bulk").classList.toggle("hidden");
   let clearArm = false;
   $("clearAll").onclick = ()=>{
     if(!clearArm){ clearArm = true; $("clearAll").textContent = "Confirmer l'effacement ?"; setTimeout(()=>{clearArm=false;$("clearAll").textContent="Tout effacer";},3000); return; }
-    state.people = [{name:"",family:"",phone:""}]; invalidate(); state.draw=null; save(); renderRows(); renderSend(); $("drawInfo").innerHTML="";
+    state.people = [{name:"",last:"",family:"",age:"",phone:""}]; invalidate(); state.draw=null; save(); renderRows(); renderSend(); $("drawInfo").innerHTML="";
   };
   $("importBulk").onclick = ()=>{
     const lines = $("bulkText").value.split(/\n/).map(l=>l.trim()).filter(Boolean);
-    const list = lines.map(l=>{ const [name="",family="",phone=""] = l.split(/[;\t]/).map(x=>x.trim()); return {name,family,phone}; }).filter(p=>p.name);
+    const list = lines.map(l=>{
+      let phone = "", age = ""; const txt = [];
+      l.split(/[;\t]/).map(x=>x.trim()).forEach(x=>{
+        if(!phone && (x.match(/\d/g)||[]).length >= 6 && /^[\d\s+().\-\/]+$/.test(x)) phone = x;
+        else if(!age && /^\d{1,3}( ?ans?)?$/i.test(x)) age = x.match(/\d+/)[0];
+        else txt.push(x);
+      });
+      const [name="", last="", family=""] = txt; return {name, last, family, age, phone};
+    }).filter(p=>p.name);
     if(!list.length) return;
     state.people = state.people.filter(p=>p.name.trim()).concat(list);
     invalidate(); save(); renderRows(); $("bulkText").value=""; $("bulk").classList.add("hidden");
   };
 
   // ---------- budget / organisateur ----------
-  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText()); }
+  function tok(g, r){ return encode(g, r, state.budget, waNumber(state.orgPhone), state.group, whenText(), ageOf(r)); }
   function fmtDate(v){ const [y,m,d] = v.split("-").map(Number); return new Date(y, m-1, d).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long", year:"numeric"}); }
   function whenText(){
     const a = state.dateFrom, b = state.dateTo;
@@ -359,7 +380,7 @@
   // ---------- désistement ----------
   function withdraw(name){
     const D = state.draw, fam = {};
-    state.people.forEach((p,i)=>{ const f = (p.family||"").trim().toLowerCase(); fam[p.name.trim()] = f ? "f:"+f : "solo:"+p.name.trim(); });
+    state.people.forEach((p,i)=>{ const f = (p.family||"").trim().toLowerCase(); fam[full(p)] = f ? "f:"+f : "solo:"+full(p); });
     if(D.length <= 3) return "Il faut au moins 3 participants restants.";
     const tgt = t => decode(t.token).receiver;
     const ok = (g, r) => g !== r && fam[g] !== fam[r];
@@ -376,7 +397,7 @@
     state.draw = D.filter(t => t !== X);
     state.draw.forEach(t => { if(changes[t.name]){ t.token = tok(t.name, changes[t.name]); state.changed[t.name] = true; state.sent[t.name] = false; delete state.confirmed[t.name]; } });
     delete state.sent[name]; delete state.changed[name]; delete state.confirmed[name];
-    state.people = state.people.filter(p => p.name.trim() !== name);
+    state.people = state.people.filter(p => full(p) !== name);
     save(); renderRows();
     const who = Object.keys(changes);
     $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(name) + ' a été retiré(e). ' + (who.length === 1 ? '1 personne doit' : who.length + ' personnes doivent') + ' recevoir un nouveau lien : ' + who.map(esc).join(" et ") + ' (en jaune ci-dessous).</div>';
@@ -385,11 +406,11 @@
   }
 
   // ---------- tirage ----------
-  function famKey(p, i){ const f = p.family.trim().toLowerCase(); return f ? "f:" + f : "solo:" + i; }
+  function famKey(p, i){ const f = (p.family||"").trim().toLowerCase(); return f ? "f:" + f : "solo:" + i; }
   function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
   function doDraw(people){
     const n = people.length, fam = people.map(famKey);
-    // ordre : grandes familles d'abord, puis aléatoire
+    // ordre : grands groupes d'abord, puis aléatoire
     const size = {}; fam.forEach(f=>size[f]=(size[f]||0)+1);
     const order = shuffle([...Array(n).keys()]).sort((a,b)=>size[fam[b]]-size[fam[a]]);
     const used = new Array(n).fill(false), res = new Array(n);
@@ -412,15 +433,15 @@
   let drawArm = false;
   $("draw").onclick = ()=>{
     const err = $("err"); err.style.display = "none";
-    const people = valid().map(p=>({name:p.name.trim(), family:p.family.trim(), phone:p.phone.trim()}));
+    const people = valid().map(p=>({name:full(p), family:(p.family||"").trim(), phone:(p.phone||"").trim()}));
     const fail = m => { err.textContent = m; err.style.display = "block"; };
     if(people.length < 3) return fail("Il faut au moins 3 participants.");
     const names = people.map(p=>p.name.toLowerCase());
     const dup = names.find((n,i)=>names.indexOf(n)!==i);
-    if(dup) return fail("Deux participants portent le même prénom (« " + dup + " »). Ajoute une initiale pour les distinguer.");
+    if(dup) return fail("Deux participants portent le même nom (« " + dup + " »). Ajoute leur nom de famille ou une initiale pour les distinguer.");
     const sizes = {}; people.forEach((p,i)=>{ const f=famKey(p,i); sizes[f]=(sizes[f]||0)+1; });
     const big = Object.entries(sizes).find(([f,c])=> c > people.length - c);
-    if(big) return fail("Impossible : la famille « " + big[0].slice(2) + " » compte plus de la moitié des participants.");
+    if(big) return fail("Impossible : le groupe « " + big[0].slice(2) + " » compte plus de la moitié des participants.");
     if(state.draw && !drawArm){ drawArm = true; $("draw").textContent = "⚠️ Confirmer un nouveau tirage ?"; setTimeout(()=>{drawArm=false;$("draw").textContent="🎲 Relancer le tirage";},4000); return; }
     drawArm = false;
     const res = doDraw(people);
@@ -428,7 +449,7 @@
     state.draw = people.map((p,i)=>({name:p.name, phone:p.phone, token:tok(p.name, people[res[i]].name)}));
     state.sent = {}; state.changed = {}; state.confirmed = {}; save();
     $("draw").textContent = "🎲 Relancer le tirage";
-    $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les familles. Le résultat est caché dans les liens.</div>';
+    $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les groupes. Le résultat est caché dans les liens.</div>';
     renderSend();
   };
 
@@ -568,7 +589,6 @@
   $("restoreBtn").onclick = ()=> restore($("restoreText").value);
   $("restoreFile").onchange = async (e)=>{ const f = e.target.files[0]; if(f) restore(await f.text()); e.target.value = ""; };
 
-  if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
   renderRows();
   if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
   renderSend();
@@ -580,6 +600,29 @@
   document.getElementById("helpBtn").onclick = ()=>{ if(d.showModal) d.showModal(); else d.setAttribute("open",""); };
   document.getElementById("helpClose").onclick = ()=>{ if(d.close) d.close(); else d.removeAttribute("open"); };
   d.addEventListener("click", e=>{ if(e.target === d && d.close) d.close(); });
+})();
+</script>
+<script>
+// ---------- version et mise à jour automatique ----------
+(function(){
+  const APP_VERSION = "1.12.0"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
+  if(!("serviceWorker" in navigator)) return;
+  let reloading = false;
+  const reload = () => { if(reloading) return; reloading = true; location.reload(); };
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if(hadController) reload(); });
+  navigator.serviceWorker.register("sw.js", {updateViaCache: "none"}).then(reg => {
+    reg.update().catch(()=>{});
+    return fetch("sw.js?v=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
+      const m = t.match(/VERSION\s*=\s*"([^"]+)"/);
+      if(!m || m[1] === APP_VERSION) return;
+      const k = "ss-maj-" + m[1];
+      if(sessionStorage.getItem(k)) return; // une seule tentative par version
+      sessionStorage.setItem(k, "1");
+      reg.update().catch(()=>{}).then(() => setTimeout(reload, 800));
+    });
+  }).catch(()=>{});
 })();
 </script>
 </body>
