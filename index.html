@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Secret Santa</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b3202a">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Secret Santa">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#b3202a; --red-d:#8c1820; --green:#1f6b45; --green-l:#e6f2eb;
+    --cream:#fbf6ee; --ink:#2a2320; --muted:#7a6f68; --line:#e7dccd; --gold:#c9962b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--cream);color:var(--ink);line-height:1.45}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-family:Fraunces,serif;font-weight:800;font-size:30px;margin:6px 0 4px;color:var(--red)}
+  h2{font-family:Fraunces,serif;font-weight:600;font-size:20px;margin:0 0 10px}
+  .sub{color:var(--muted);margin:0 0 20px;font-size:15px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+  .step{display:inline-block;background:var(--red);color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:13px;font-weight:600;margin-right:8px}
+  label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px}
+  input,textarea{width:100%;font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fffdf9}
+  input:focus,textarea:focus{outline:2px solid var(--gold);border-color:transparent}
+  textarea{min-height:120px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .hint{font-size:13px;color:var(--muted);margin:6px 0 0}
+  .row{display:grid;grid-template-columns:1.2fr 1fr 1.3fr 34px;gap:6px;margin-bottom:6px;align-items:center}
+  .row.head{font-size:12px;font-weight:600;color:var(--muted)}
+  .row input{padding:7px 8px;font-size:14px}
+  .x{border:none;background:none;color:var(--muted);font-size:20px;cursor:pointer}
+  button.btn,a.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;font-size:15px;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;text-decoration:none}
+  .primary{background:var(--red);color:#fff}.primary:hover{background:var(--red-d)}
+  .ghost{background:transparent;border:1px solid var(--line)!important;color:var(--ink)}
+  .wa{background:#25d366;color:#fff}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .err{background:#fde8e8;color:var(--red-d);border-radius:9px;padding:10px;margin-top:10px;font-size:14px;display:none}
+  .ok{background:var(--green-l);color:var(--green);border-radius:9px;padding:10px;margin-top:10px;font-size:14px}
+  .send{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+  .send:first-child{border-top:none}
+  .send .who{flex:1;min-width:120px}
+  .send .who b{display:block}
+  .send .who small{color:var(--muted)}
+  .send.done .who b{text-decoration:line-through;color:var(--muted)}
+  .chk{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
+  .chk input{width:auto}
+  .small{font-size:13px;padding:7px 10px}
+  .hidden{display:none!important}
+  /* Reveal */
+  .reveal{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 30% 20%,#c4323b,#7d141b 70%);color:#fff;text-align:center}
+  .reveal .box{max-width:420px}
+  .reveal h1{color:#fff;font-size:34px}
+  .gift{font-size:80px;margin:10px 0;cursor:pointer;user-select:none;transition:transform .2s}
+  .gift:hover{transform:scale(1.08) rotate(-4deg)}
+  .name{font-family:Fraunces,serif;font-weight:800;font-size:44px;color:#ffe7a8;margin:10px 0;animation:pop .5s ease}
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+  .reveal p{opacity:.92}
+  .snow{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .snow span{position:absolute;top:-10px;color:#fff;opacity:.7;animation:fall linear infinite}
+  @keyframes fall{to{transform:translateY(110vh)}}
+</style>
+</head>
+<body>
+
+<!-- ========== ORGANISATEUR ========== -->
+<div id="admin" class="wrap">
+  <h1>🎅 Secret Santa</h1>
+  <p class="sub">Tirage au sort avec exclusions par famille. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
+
+  <div class="card">
+    <h2><span class="step">1</span>Participants</h2>
+    <p class="hint" style="margin:0 0 10px">Deux personnes de la <b>même famille</b> (même nom dans la colonne Famille) ne pourront pas se tirer. Laisse Famille vide si la personne n'a pas de restriction.</p>
+    <div class="row head"><span>Prénom</span><span>Famille</span><span>Téléphone</span><span></span></div>
+    <div id="rows"></div>
+    <div class="actions">
+      <button class="btn ghost small" id="addRow">+ Ajouter</button>
+      <button class="btn ghost small" id="toggleBulk">Coller une liste</button>
+      <button class="btn ghost small" id="clearAll">Tout effacer</button>
+    </div>
+    <div id="bulk" class="hidden" style="margin-top:12px">
+      <label>Une personne par ligne&nbsp;: Prénom ; Famille ; Téléphone</label>
+      <textarea id="bulkText" placeholder="Marie ; Dupont ; 06 12 34 56 78&#10;Paul ; Dupont ; 06 98 76 54 32&#10;Léa ; Martin ; +33 7 11 22 33 44"></textarea>
+      <div class="actions"><button class="btn primary small" id="importBulk">Importer</button></div>
+    </div>
+    <p class="hint" id="count"></p>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">2</span>Tirage</h2>
+    <div class="actions">
+      <button class="btn primary" id="draw">🎲 Lancer le tirage</button>
+    </div>
+    <div class="err" id="err"></div>
+    <div id="drawInfo"></div>
+  </div>
+
+  <div class="card hidden" id="sendCard">
+    <h2><span class="step">3</span>Envoi sur WhatsApp</h2>
+    <p class="hint" style="margin:0 0 8px">Appuie sur <b>Envoyer</b> pour chaque personne&nbsp;: WhatsApp s'ouvre avec le message prêt, tu n'as plus qu'à l'envoyer. <b>N'ouvre pas les liens toi-même</b>, sinon tu découvriras le résultat.</p>
+    <div id="sendList"></div>
+  </div>
+</div>
+
+<!-- ========== RÉVÉLATION ========== -->
+<div id="reveal" class="reveal hidden">
+  <div class="snow" id="snow"></div>
+  <div class="box">
+    <h1 id="hello">🎅 Secret Santa</h1>
+    <p id="intro">Tu dois offrir un cadeau à…</p>
+    <div class="gift" id="gift" title="Ouvrir">🎁</div>
+    <p id="tap">Touche le cadeau pour découvrir le nom</p>
+    <div class="name hidden" id="target"></div>
+    <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  const KEY = "PereNoel-Lutins-2026-Traineau";
+  const LS = "secretSanta.v1";
+  const $ = id => document.getElementById(id);
+
+  // ---------- encodage du lien ----------
+  function encode(giver, receiver){
+    const bytes = new TextEncoder().encode(giver + "|" + receiver);
+    let sum = 0, hex = "";
+    bytes.forEach((b,i)=>{ sum = (sum + b) & 255; const x = b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); hex += x.toString(16).padStart(2,"0"); });
+    return "s" + hex + sum.toString(16).padStart(2,"0");
+  }
+  function decode(tok){
+    if(!/^s[0-9a-f]+$/.test(tok) || tok.length % 2 === 0) return null;
+    const hex = tok.slice(1, -2), chk = parseInt(tok.slice(-2),16);
+    const bytes = new Uint8Array(hex.length/2); let sum = 0;
+    for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
+    if(sum !== chk) return null;
+    const parts = new TextDecoder().decode(bytes).split("|");
+    return parts.length === 2 ? {giver:parts[0], receiver:parts[1]} : null;
+  }
+
+  // ---------- mode révélation ----------
+  function showReveal(){
+    const tok = location.hash.slice(1);
+    const d = decode(tok);
+    if(!d) return false;
+    $("admin").classList.add("hidden");
+    $("reveal").classList.remove("hidden");
+    $("hello").textContent = "🎅 Bonjour " + d.giver + " !";
+    $("target").textContent = d.receiver;
+    const open = ()=>{ $("gift").classList.add("hidden"); $("tap").classList.add("hidden");
+      $("target").classList.remove("hidden"); $("secret").classList.remove("hidden"); };
+    $("gift").onclick = open;
+    const s = $("snow");
+    for(let i=0;i<30;i++){ const f=document.createElement("span"); f.textContent="❄";
+      f.style.left=Math.random()*100+"%"; f.style.fontSize=(8+Math.random()*14)+"px";
+      f.style.animationDuration=(6+Math.random()*8)+"s"; f.style.animationDelay=(-Math.random()*10)+"s"; s.appendChild(f); }
+    return true;
+  }
+  if(showReveal()) return;
+  window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
+
+  // ---------- état organisateur ----------
+  let state = { people:[{name:"",family:"",phone:""},{name:"",family:"",phone:""},{name:"",family:"",phone:""}], shareUrl:"", draw:null, sent:{} };
+  try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
+  const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} };
+
+  function renderRows(){
+    const box = $("rows"); box.innerHTML = "";
+    state.people.forEach((p,i)=>{
+      const r = document.createElement("div"); r.className = "row";
+      r.innerHTML = `<input placeholder="Prénom" value="${esc(p.name)}" data-k="name">
+        <input placeholder="Famille" value="${esc(p.family)}" data-k="family">
+        <input placeholder="06…" inputmode="tel" value="${esc(p.phone)}" data-k="phone">
+        <button class="x" title="Supprimer">×</button>`;
+      r.querySelectorAll("input").forEach(inp=> inp.oninput = ()=>{ p[inp.dataset.k] = inp.value; invalidate(); save(); updateCount(); });
+      r.querySelector(".x").onclick = ()=>{ state.people.splice(i,1); invalidate(); save(); renderRows(); };
+      box.appendChild(r);
+    });
+    updateCount();
+  }
+  function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function valid(){ return state.people.filter(p=>p.name.trim()); }
+  function updateCount(){ const n = valid().length; $("count").textContent = n + " participant" + (n>1?"s":""); }
+  function invalidate(){ if(state.draw){ state.draw = null; state.sent = {}; renderSend(); $("drawInfo").innerHTML = '<div class="err" style="display:block">La liste a changé : le tirage précédent est annulé, relance-le.</div>'; } }
+
+  $("addRow").onclick = ()=>{ state.people.push({name:"",family:"",phone:""}); save(); renderRows(); };
+  $("toggleBulk").onclick = ()=> $("bulk").classList.toggle("hidden");
+  let clearArm = false;
+  $("clearAll").onclick = ()=>{
+    if(!clearArm){ clearArm = true; $("clearAll").textContent = "Confirmer l'effacement ?"; setTimeout(()=>{clearArm=false;$("clearAll").textContent="Tout effacer";},3000); return; }
+    state.people = [{name:"",family:"",phone:""}]; invalidate(); state.draw=null; save(); renderRows(); renderSend(); $("drawInfo").innerHTML="";
+  };
+  $("importBulk").onclick = ()=>{
+    const lines = $("bulkText").value.split(/\n/).map(l=>l.trim()).filter(Boolean);
+    const list = lines.map(l=>{ const [name="",family="",phone=""] = l.split(/[;\t]/).map(x=>x.trim()); return {name,family,phone}; }).filter(p=>p.name);
+    if(!list.length) return;
+    state.people = state.people.filter(p=>p.name.trim()).concat(list);
+    invalidate(); save(); renderRows(); $("bulkText").value=""; $("bulk").classList.add("hidden");
+  };
+
+  // ---------- tirage ----------
+  function famKey(p, i){ const f = p.family.trim().toLowerCase(); return f ? "f:" + f : "solo:" + i; }
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function doDraw(people){
+    const n = people.length, fam = people.map(famKey);
+    // ordre : grandes familles d'abord, puis aléatoire
+    const size = {}; fam.forEach(f=>size[f]=(size[f]||0)+1);
+    const order = shuffle([...Array(n).keys()]).sort((a,b)=>size[fam[b]]-size[fam[a]]);
+    const used = new Array(n).fill(false), res = new Array(n);
+    let steps = 0;
+    function bt(k){
+      if(++steps > 200000) return false;
+      if(k === n) return true;
+      const g = order[k];
+      for(const r of shuffle([...Array(n).keys()])){
+        if(used[r] || r === g || fam[r] === fam[g]) continue;
+        used[r] = true; res[g] = r;
+        if(bt(k+1)) return true;
+        used[r] = false;
+      }
+      return false;
+    }
+    return bt(0) ? res : null;
+  }
+
+  let drawArm = false;
+  $("draw").onclick = ()=>{
+    const err = $("err"); err.style.display = "none";
+    const people = valid().map(p=>({name:p.name.trim(), family:p.family.trim(), phone:p.phone.trim()}));
+    const fail = m => { err.textContent = m; err.style.display = "block"; };
+    if(people.length < 3) return fail("Il faut au moins 3 participants.");
+    const names = people.map(p=>p.name.toLowerCase());
+    const dup = names.find((n,i)=>names.indexOf(n)!==i);
+    if(dup) return fail("Deux participants portent le même prénom (« " + dup + " »). Ajoute une initiale pour les distinguer.");
+    const sizes = {}; people.forEach((p,i)=>{ const f=famKey(p,i); sizes[f]=(sizes[f]||0)+1; });
+    const big = Object.entries(sizes).find(([f,c])=> c > people.length - c);
+    if(big) return fail("Impossible : la famille « " + big[0].slice(2) + " » compte plus de la moitié des participants.");
+    if(state.draw && !drawArm){ drawArm = true; $("draw").textContent = "⚠️ Confirmer un nouveau tirage ?"; setTimeout(()=>{drawArm=false;$("draw").textContent="🎲 Relancer le tirage";},4000); return; }
+    drawArm = false;
+    const res = doDraw(people);
+    if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
+    state.draw = people.map((p,i)=>({name:p.name, phone:p.phone, token:encode(p.name, people[res[i]].name)}));
+    state.sent = {}; save();
+    $("draw").textContent = "🎲 Relancer le tirage";
+    $("drawInfo").innerHTML = '<div class="ok">✅ Tirage effectué pour ' + people.length + ' personnes, en respectant les familles. Le résultat est caché dans les liens.</div>';
+    renderSend();
+  };
+
+  // ---------- envoi ----------
+  function waNumber(raw){
+    let d = String(raw||"").replace(/[^\d+]/g,"");
+    if(!d) return "";
+    if(d.startsWith("+")) d = d.slice(1);
+    else if(d.startsWith("00")) d = d.slice(2);
+    else if(d.startsWith("0") && d.length === 10) d = "33" + d.slice(1);
+    return d.replace(/\D/g,"");
+  }
+  function linkFor(t){ const base = location.href.split("#")[0].split("?")[0]; return base + "#" + t.token; }
+  function renderSend(){
+    const card = $("sendCard"), box = $("sendList");
+    if(!state.draw){ card.classList.add("hidden"); return; }
+    card.classList.remove("hidden"); box.innerHTML = "";
+    state.draw.forEach(t=>{
+      const url = linkFor(t);
+      const msg = "🎅 Secret Santa !\n\nBonjour " + t.name + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n\n" + url;
+      const num = waNumber(t.phone);
+      const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+      const row = document.createElement("div"); row.className = "send" + (state.sent[t.name] ? " done" : "");
+      row.innerHTML = `<div class="who"><b>${esc(t.name)}</b><small>${num ? "+" + num : "pas de numéro : tu choisiras le contact"}</small></div>
+        <a class="btn wa small" href="${wa}" target="_blank" rel="noopener">Envoyer</a>
+        <button class="btn ghost small cp">Copier</button>
+        <label class="chk"><input type="checkbox" ${state.sent[t.name]?"checked":""}> envoyé</label>`;
+      const cb = row.querySelector("input");
+      const mark = v => { state.sent[t.name] = v; cb.checked = v; row.classList.toggle("done", v); save(); };
+      row.querySelector(".wa").addEventListener("click", ()=> mark(true));
+      cb.onchange = ()=> mark(cb.checked);
+      row.querySelector(".cp").onclick = async (e)=>{
+        try{ await navigator.clipboard.writeText(msg); e.target.textContent = "Copié ✓"; }
+        catch(_){ e.target.textContent = "Échec"; }
+        setTimeout(()=> e.target.textContent = "Copier", 1500);
+      };
+      box.appendChild(row);
+    });
+  }
+
+  if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+  renderRows();
+  if(state.draw){ $("draw").textContent = "🎲 Relancer le tirage"; $("drawInfo").innerHTML = '<div class="ok">✅ Un tirage est déjà enregistré dans ce navigateur.</div>'; }
+  renderSend();
+})();
+</script>
+</body>
+</html>
