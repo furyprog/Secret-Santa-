@@ -166,7 +166,7 @@
         <input id="budget" type="number" inputmode="decimal" min="0" step="1" placeholder="ex. 20">
         <input id="orgPhone" type="tel" inputmode="tel" placeholder="06…">
         <span></span>
-        <p class="hint">Pour que chacun puisse te confirmer qu'il a bien reçu son tirage.</p>
+        <p class="hint">Pour confirmer la bonne réception de ton tirage</p>
       </div>
     </div>
     <div class="row head"><span>Prénom</span><span>Nom</span><span>Groupe</span><span>Âge</span><span>Téléphone</span><span></span></div>
@@ -606,7 +606,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.0.4"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.0.5"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
