@@ -4,7 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Secret Santa</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" id="manifestLink">
+<script>
+// page d'un participant (lien #code) : le raccourci sur l'écran d'accueil doit rouvrir CETTE page, pas l'appli de l'organisateur
+(function(){
+  var h = location.hash; if(!/^#s[0-9a-f]{20,}$/.test(h)) return;
+  var base = location.href.split("#")[0].split("?")[0], u = function(f){ return new URL(f, base).href; };
+  var id = 0; for(var i=1;i<h.length;i++){ id = (id * 31 + h.charCodeAt(i)) >>> 0; }
+  var m = {name:"Mon Secret Santa", short_name:"Mon Secret Santa", id: base + "?participant=" + id.toString(36), start_url: base + h, scope: base,
+    display:"standalone", background_color:"#fbf6ee", theme_color:"#b3202a", lang:"fr",
+    icons:[{src:u("icon-192.png"), sizes:"192x192", type:"image/png", purpose:"any maskable"},{src:u("icon-512.png"), sizes:"512x512", type:"image/png", purpose:"any maskable"}]};
+  document.getElementById("manifestLink").href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(m));
+  document.addEventListener("DOMContentLoaded", function(){ var t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(t) t.content = "Mon Secret Santa"; });
+})();
+</script>
 <meta name="theme-color" content="#b3202a">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -351,6 +364,8 @@
       <p>Si une date de remise a été indiquée, un compte à rebours s'affiche sous la date. Pour une période (du … au …), il compte jusqu'au premier jour, puis indique que la remise est en cours jusqu'au dernier jour.</p>
       <h3>💌 Merci pour mon cadeau</h3>
       <p>Après avoir reçu ton cadeau, écris un petit mot dans <b>Merci pour mon cadeau</b> puis appuie sur <b>Envoyer</b>. La personne qui te l'a offert le verra sur sa page, sans que tu saches qui c'est. Et si la personne à qui tu offres t'écrit un mot, il s'affiche sur ta page sous le nom.</p>
+      <h3>📲 Garder mon lien</h3>
+      <p>Le bouton <b>Garder mon lien sur l'écran d'accueil</b>, en bas de la page, ajoute ta page sur l'écran d'accueil de ton téléphone ou de ton ordinateur (ou t'explique comment faire). Elle s'ouvre alors directement, comme une appli.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -399,6 +414,10 @@
       <p style="font-size:13px;margin:4px 0 8px">La personne qui doit te faire un cadeau les verra sur sa page. Tu peux les modifier quand tu veux.</p>
       <button class="btn" id="myWishSave" style="background:#f3cf6b;color:#5a1010">Enregistrer</button>
       <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
+    </div>
+    <div style="margin-top:30px">
+      <button class="btn" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
+      <div id="homeHow" class="wishBox hidden"></div>
     </div>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
   </div>
@@ -548,6 +567,20 @@
     if(!d) return false;
     $("admin").classList.add("hidden");
     $("reveal").classList.remove("hidden");
+    // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
+    let installEvt = null;
+    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; });
+    window.addEventListener("appinstalled", ()=>{ $("homeHow").innerHTML = "✅ C'est fait : ton lien est sur l'écran d'accueil."; $("homeHow").classList.remove("hidden"); });
+    $("homeBtn").onclick = async ()=>{
+      if(installEvt){ installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; return; }
+      const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
+      const how = ios ? "Dans <b>Safari</b>, touche le bouton <b>Partager</b> (le carré avec une flèche vers le haut), puis <b>Sur l'écran d'accueil</b> et <b>Ajouter</b>."
+        : android ? "Dans <b>Chrome</b>, touche le menu <b>⋮</b> en haut à droite, puis <b>Ajouter à l'écran d'accueil</b> (ou <b>Installer l'appli</b>) et confirme."
+        : "Dans <b>Chrome</b> ou <b>Edge</b>, clique sur l'icône d'installation à droite de la barre d'adresse, ou ouvre le menu <b>⋮</b> et choisis <b>Installer</b>. Tu peux aussi l'ajouter à tes favoris avec <b>Ctrl + D</b>.";
+      $("homeHow").innerHTML = how + "<br><br>Si le lien s'est ouvert dans WhatsApp, ouvre-le d'abord dans ton navigateur (menu <b>⋮</b> ou <b>⋯</b> → <b>Ouvrir dans le navigateur</b>).<br><br>Tu peux aussi garder ton lien en le copiant&nbsp;: <button class='btn' id='homeCopy' style='background:#f3cf6b;color:#5a1010;margin-top:6px'>Copier mon lien</button>";
+      $("homeHow").classList.remove("hidden");
+      $("homeCopy").onclick = async (e)=>{ try{ await navigator.clipboard.writeText(location.href); e.target.textContent = "Copié ✓"; }catch(_){ e.target.textContent = "Échec"; } };
+    };
     const hp = $("helpP");
     $("helpPBtn").onclick = ()=>{ if(hp.showModal) hp.showModal(); else hp.setAttribute("open",""); };
     $("helpPClose").onclick = ()=>{ if(hp.close) hp.close(); else hp.removeAttribute("open"); };
@@ -1378,7 +1411,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.19"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.20"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
