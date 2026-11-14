@@ -368,7 +368,7 @@
       <h3>💌 Merci pour mon cadeau</h3>
       <p>Après avoir reçu ton cadeau, écris un petit mot dans <b>Merci pour mon cadeau</b> puis appuie sur <b>Envoyer</b>. La personne qui te l'a offert le verra sur sa page, sans que tu saches qui c'est. Et si la personne à qui tu offres t'écrit un mot, il s'affiche sur ta page sous le nom.</p>
       <h3>📲 Garder mon lien</h3>
-      <p>Une fois ton lien ouvert, l'appli Secret Santa s'en souvient sur ce téléphone ou cet ordinateur&nbsp;: en ouvrant l'appli (ou l'adresse du site), tu retrouves ta page cadeau.</p>
+      <p>Appuie sur <b>Garder mon lien sur l'écran d'accueil</b>, en bas de ta pageUne fois ton lien ouvert, l'appli Secret Santa s'en souvient sur ce téléphone ou cet ordinateur&nbsp;: en ouvrant l'appli (ou l'adresse du site), tu retrouves ta page cadeau.nbsp;: un raccourci est créé et rouvre directement ta page cadeau.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -419,7 +419,7 @@
       <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
     </div>
     <div style="margin-top:30px">
-      <button class="btn hidden" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
+      <button class="btn" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
       <div id="homeHow" class="wishBox hidden"></div>
     </div>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
@@ -576,9 +576,14 @@
     }catch(e){}
     // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
     let installEvt = null;
-    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("homeBtn").classList.remove("hidden"); });
+    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; });
     window.addEventListener("appinstalled", ()=>{ $("homeHow").innerHTML = "✅ C'est fait : ton lien est sur l'écran d'accueil."; $("homeHow").classList.remove("hidden"); });
-    $("homeBtn").onclick = async ()=>{ if(!installEvt) return; installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; $("homeBtn").classList.add("hidden"); };
+    $("homeBtn").onclick = async ()=>{
+      if(installEvt){ installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; return; } // Android / ordinateur : installation directe
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+      $("homeHow").innerHTML = ios ? "Touche <b>Partager</b> ⬆️ en bas de Safari, puis <b>Sur l'écran d'accueil</b>." : "Ouvre le menu <b>⋮</b> du navigateur, puis <b>Ajouter à l'écran d'accueil</b>.";
+      $("homeHow").classList.remove("hidden");
+    };
     const hp = $("helpP");
     $("helpPBtn").onclick = ()=>{ if(hp.showModal) hp.showModal(); else hp.setAttribute("open",""); };
     $("helpPClose").onclick = ()=>{ if(hp.close) hp.close(); else hp.removeAttribute("open"); };
@@ -1416,7 +1421,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.21"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.22"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
