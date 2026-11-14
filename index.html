@@ -4,20 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Secret Santa</title>
-<link rel="manifest" href="manifest.json" id="manifestLink">
-<script>
-// page d'un participant (lien #code) : le raccourci sur l'écran d'accueil doit rouvrir CETTE page, pas l'appli de l'organisateur
-(function(){
-  var h = location.hash; if(!/^#s[0-9a-f]{20,}$/.test(h)) return;
-  var base = location.href.split("#")[0].split("?")[0], u = function(f){ return new URL(f, base).href; };
-  var id = 0; for(var i=1;i<h.length;i++){ id = (id * 31 + h.charCodeAt(i)) >>> 0; }
-  var m = {name:"Mon Secret Santa", short_name:"Mon Secret Santa", id: base + "?participant=" + id.toString(36), start_url: base + h, scope: base,
-    display:"standalone", background_color:"#fbf6ee", theme_color:"#b3202a", lang:"fr",
-    icons:[{src:u("icon-192.png"), sizes:"192x192", type:"image/png", purpose:"any maskable"},{src:u("icon-512.png"), sizes:"512x512", type:"image/png", purpose:"any maskable"}]};
-  document.getElementById("manifestLink").href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(m));
-  document.addEventListener("DOMContentLoaded", function(){ var t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(t) t.content = "Mon Secret Santa"; });
-})();
-</script>
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#b3202a">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -419,7 +406,7 @@
       <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
     </div>
     <div style="margin-top:30px">
-      <button class="btn" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
+      <button class="btn hidden" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
       <div id="homeHow" class="wishBox hidden"></div>
     </div>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
@@ -576,14 +563,16 @@
     }catch(e){}
     // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
     let installEvt = null;
-    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; });
+    const iosSafari = (/iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) && !navigator.standalone;
+    if(iosSafari) $("homeBtn").classList.remove("hidden"); // iPhone : Apple n'autorise pas l'installation par un bouton
+    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("homeBtn").classList.remove("hidden"); }); // le bouton n'apparaît que si le navigateur sait installer
     // déjà ouverte dans l'appli installée : pas de bouton (la page est retenue, bouton « Ma page cadeau » dans l'appli)
     if((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone) $("homeBtn").classList.add("hidden");
-    window.addEventListener("appinstalled", ()=>{ $("homeHow").innerHTML = "✅ C'est fait : ton lien est sur l'écran d'accueil."; $("homeHow").classList.remove("hidden"); });
+    window.addEventListener("appinstalled", ()=>{ $("homeBtn").classList.add("hidden"); $("homeHow").innerHTML = "✅ C'est fait : ton lien est sur l'écran d'accueil."; $("homeHow").classList.remove("hidden"); });
     $("homeBtn").onclick = async ()=>{
       if(installEvt){ installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; return; } // Android / ordinateur : installation directe
-      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-      $("homeHow").innerHTML = ios ? "Touche <b>Partager</b> ⬆️ en bas de Safari, puis <b>Sur l'écran d'accueil</b>." : "Ouvre le menu <b>⋮</b> du navigateur, puis <b>Ajouter à l'écran d'accueil</b>.";
+      if(!iosSafari) return;
+      $("homeHow").innerHTML = "Touche <b>Partager</b> ⬆️ en bas de Safari, puis <b>Sur l'écran d'accueil</b>.";
       $("homeHow").classList.remove("hidden");
     };
     const hp = $("helpP");
@@ -1423,7 +1412,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.23"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.24"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
