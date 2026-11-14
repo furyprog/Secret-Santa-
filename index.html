@@ -185,6 +185,8 @@
       <p>Le bouton <b>Prévenir tout le monde des messages de remerciement</b> prépare un seul message WhatsApp, à envoyer au groupe ou aux contacts de ton choix, qui invite chacun à rouvrir son lien. Il ne révèle rien.</p>
       <h3>🎁 Ma page cadeau</h3>
       <p>Si tu participes aussi, ouvre une fois ton propre lien sur ton téléphone&nbsp;: un bouton <b>Ma page cadeau</b> apparaît ensuite en haut de l'appli pour la rouvrir.</p>
+      <h3>🔔 Relances</h3>
+      <p>Sous la liste d'envoi, l'appli compte les liens envoyés mais pas encore ouverts, et les personnes qui n'ont saisi aucune idée cadeau. Le bouton <b>Relancer</b> ou <b>Rappeler</b> prépare un message WhatsApp avec son lien pour la personne suivante&nbsp;; rappuie dessus pour passer à la suivante. Rien ne révèle qui offre à qui.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -289,6 +291,12 @@
       <p class="hint hidden" id="giftWhen" style="margin:6px 0 0"></p>
       <div id="giftList" style="margin-top:8px"></div>
       <a class="btn wa small hidden" id="remindWa" href="#" target="_blank" rel="noopener" style="margin-top:8px">🎄 Rappel avant la remise</a>
+      <div id="relBox" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+        <p class="hint" id="relLienInfo" style="margin:0"></p>
+        <a class="btn wa small hidden" id="relLien" href="#" target="_blank" rel="noopener"></a>
+        <p class="hint" id="relIdeeInfo" style="margin:6px 0 0"></p>
+        <a class="btn wa small hidden" id="relIdee" href="#" target="_blank" rel="noopener"></a>
+      </div>
       <a class="btn wa small" id="thanksWa" href="#" target="_blank" rel="noopener" style="margin-top:8px">💌 Prévenir tout le monde des messages de remerciement</a>
     </div>
     <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:12px">
@@ -356,6 +364,8 @@
       <p>Après avoir reçu ton cadeau, écris un petit mot dans <b>Merci pour mon cadeau</b> puis appuie sur <b>Envoyer</b>. La personne qui te l'a offert le verra sur sa page, sans que tu saches qui c'est. Et si la personne à qui tu offres t'écrit un mot, il s'affiche sur ta page sous le nom.</p>
       <h3>📲 Garder mon lien</h3>
       <p>Appuie sur <b>Garder mon lien sur l'écran d'accueil</b>, en bas de ta pageUne fois ton lien ouvert, l'appli Secret Santa s'en souvient sur ce téléphone ou cet ordinateur&nbsp;: en ouvrant l'appli (ou l'adresse du site), tu retrouves ta page cadeau.nbsp;: un raccourci est créé et rouvre directement ta page cadeau.</p>
+      <h3>📷 Photo du cadeau</h3>
+      <p>Avec ton petit mot de remerciement, tu peux ajouter une photo de ton cadeau&nbsp;: la personne qui te l'a offert la verra sur sa page.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -379,7 +389,7 @@
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
     <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="margin-top:6px"></div></div>
-    <div id="hisThanks" class="wishBox hidden"><b>💌 Un message de <span id="hisThanksName"></span> pour toi</b><div id="hisThanksTxt" style="white-space:pre-line;margin-top:6px"></div></div>
+    <div id="hisThanks" class="wishBox hidden"><b>💌 Un message de <span id="hisThanksName"></span> pour toi</b><div id="hisThanksTxt" style="white-space:pre-line;margin-top:6px"></div><img id="hisPhoto" class="hidden" alt="" style="display:block;max-width:100%;border-radius:10px;margin-top:10px"></div>
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
@@ -396,6 +406,12 @@
       <p style="font-size:13px;margin:4px 0 8px">La personne qui t'a offert ton cadeau verra ce petit mot sur sa page, sans que tu saches qui c'est.</p>
       <button class="btn" id="myThanksSave" style="background:#f3cf6b;color:#5a1010">Envoyer</button>
       <p id="myThanksMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
+      <div style="margin-top:12px">
+        <label class="btn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin:0;cursor:pointer">📷 Ajouter une photo de mon cadeau<input type="file" id="myPhotoFile" accept="image/*" class="hidden"></label>
+        <img id="myPhotoImg" class="hidden" alt="" style="display:block;max-width:100%;border-radius:10px;margin-top:10px">
+        <button class="btn hidden" id="myPhotoDel" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin-top:8px">Retirer la photo</button>
+        <p id="myPhotoMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
+      </div>
     </div>
     <div id="myWish" class="wishBox hidden" style="margin-top:26px">
       <b>📝 Saisis ici les cadeaux qui te feraient plaisir</b>
@@ -463,6 +479,8 @@
   // petit mot de remerciement : même principe, autre code (le destinataire écrit, celui qui offre lit)
   function thanksKey(name, d){ const base = "merci|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
     return "m" + h32(base).toString(36).padStart(7,"0") + h32("SM2|" + base).toString(36).padStart(7,"0"); }
+  function photoKey(name, d){ const base = "photo|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+    return "p" + h32(base).toString(36).padStart(7,"0") + h32("SP2|" + base).toString(36).padStart(7,"0"); }
   function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
   function h32(str){ let h = 2166136261; for(const c of new TextEncoder().encode(str)){ h ^= c; h = Math.imul(h, 16777619) >>> 0; } return h; }
   function stream(seed, n){ let x = seed || 1; const out = []; for(let i=0;i<n;i++){ x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out.push(x & 255); } return out; }
@@ -649,11 +667,16 @@
       }).catch(()=>{});
       // petit mot laissé par la personne à qui j'offre
       const thKey = thanksKey(d.receiver, d);
-      const loadThanks = ()=> fetch(API + "/souhaits?k=" + thKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
-        const t = (j.texte || "").trim();
+      const phKey = photoKey(d.receiver, d);
+      const loadThanks = ()=> Promise.all([
+        fetch(API + "/souhaits?k=" + thKey, {cache:"no-store"}).then(r => r.ok ? r.json() : {}).catch(()=>({})),
+        fetch(API + "/photo?k=" + phKey, {cache:"no-store"}).then(r => r.ok ? r.json() : {}).catch(()=>({}))
+      ]).then(([j, ph]) => {
+        const t = (j.texte || "").trim(), img = /^data:image\/(jpeg|png|webp);base64,/.test(ph.img || "") ? ph.img : "";
         $("hisThanksName").textContent = d.receiver; $("hisThanksTxt").textContent = t;
-        $("hisThanks").classList.toggle("hidden", !t);
-      }).catch(()=>{});
+        if(img){ $("hisPhoto").src = img; $("hisPhoto").classList.remove("hidden"); } else $("hisPhoto").classList.add("hidden");
+        $("hisThanks").classList.toggle("hidden", !t && !img);
+      });
       loadHis(); loadThanks(); setInterval(()=>{ loadHis(); loadThanks(); }, 60000);
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ loadHis(); loadThanks(); } });
       // mes propres idées (seulement si le lien a un code anonyme)
@@ -683,6 +706,26 @@
           .then(r => { $("myThanksMsg").textContent = r.ok ? "✅ Envoyé" : "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; })
           .catch(()=>{ $("myThanksMsg").textContent = "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; });
       };
+      // photo du cadeau reçu (réduite avant l'envoi)
+      const myPhKey = photoKey(d.giver, d);
+      const showMyPhoto = img => { $("myPhotoImg").src = img || ""; $("myPhotoImg").classList.toggle("hidden", !img); $("myPhotoDel").classList.toggle("hidden", !img); };
+      fetch(API + "/photo?k=" + myPhKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.img) showMyPhoto(j.img); }).catch(()=>{});
+      const sendPhoto = img => fetch(API + "/photo", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myPhKey, id:d.vid, img})}).then(r => { if(!r.ok) throw 0; });
+      $("myPhotoFile").onchange = ()=>{
+        const f = $("myPhotoFile").files[0]; if(!f) return;
+        $("myPhotoMsg").textContent = "Envoi de la photo…";
+        const im = new Image(), url = URL.createObjectURL(f);
+        im.onload = ()=>{
+          const k = Math.min(1, 1000 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+          c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url); let img = c.toDataURL("image/jpeg", 0.75);
+          if(img.length > 550000) img = c.toDataURL("image/jpeg", 0.5);
+          sendPhoto(img).then(()=>{ showMyPhoto(img); $("myPhotoMsg").textContent = "✅ Photo envoyée"; }).catch(()=>{ $("myPhotoMsg").textContent = "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; });
+        };
+        im.onerror = ()=>{ $("myPhotoMsg").textContent = "⚠️ Cette image ne peut pas être lue."; };
+        im.src = url; $("myPhotoFile").value = "";
+      };
+      $("myPhotoDel").onclick = ()=> sendPhoto("").then(()=>{ showMyPhoto(""); $("myPhotoMsg").textContent = "✅ Photo retirée"; }).catch(()=>{ $("myPhotoMsg").textContent = "⚠️ Impossible pour le moment. Réessaie plus tard."; });
       const myKey = wishKey(d.giver, d);
       const rows = $("myWishRows");
       const addRow = (it = {t:"", u:""}) => {
@@ -1068,6 +1111,48 @@
     return "🎅 " + ssTitle() + " :\n\n" + line;
   }
   $("remindWa").onclick = ()=>{ const m = remindText(); if(!m) return false; $("remindWa").href = "https://wa.me/?text=" + encodeURIComponent(m); };
+  // ---------- relances : lien pas encore ouvert / aucune idée cadeau saisie (rien n'est révélé) ----------
+  let wishState = {}; // nom -> true si la personne a saisi au moins une idée
+  function relMsg(t, kind){
+    const pp = state.people.find(q => full(q) === t.name), first = pp ? pp.name.trim() : t.name;
+    return "🎅 " + ssTitle() + " : petit rappel !\n\nBonjour,\n" + first + ", " + (kind === "lien"
+      ? "tu n'as pas encore ouvert ton lien pour découvrir à qui tu offres ton cadeau. Le voici :"
+      : "tu n'as pas encore indiqué de cadeaux qui te feraient plaisir. Ouvre ton lien pour les saisir : la personne qui t'offre un cadeau les verra.") + "\n\n" + linkFor(t);
+  }
+  function relNext(kind){
+    const seen = state.seen || {};
+    const list = state.draw.filter(t => state.sent[t.name] && t.vid && (kind === "lien" ? !seen[t.vid] : (seen[t.vid] && wishState[t.name] === false)));
+    const last = ((state.relance || {})[kind]) || {};
+    list.sort((a,b) => (last[a.name] || "").localeCompare(last[b.name] || ""));
+    return list;
+  }
+  function renderRel(){
+    if(!state.draw) return;
+    for(const kind of ["lien", "idee"]){
+      const list = relNext(kind), b = $(kind === "lien" ? "relLien" : "relIdee"), info = $(kind === "lien" ? "relLienInfo" : "relIdeeInfo");
+      info.textContent = kind === "lien" ? "🔔 Liens envoyés mais pas encore ouverts : " + list.length : "📝 Personnes sans aucune idée cadeau : " + list.length;
+      if(!list.length){ b.classList.add("hidden"); continue; }
+      const t = list[0]; b.classList.remove("hidden");
+      b.textContent = (kind === "lien" ? "🔔 Relancer " : "📝 Rappeler ") + t.name;
+      b.href = "https://wa.me/" + waNumber(t.phone) + "?text=" + encodeURIComponent(relMsg(t, kind));
+      b.onclick = ()=>{ state.relance = state.relance || {}; state.relance[kind] = state.relance[kind] || {}; state.relance[kind][t.name] = new Date().toISOString(); save(); setTimeout(renderRel, 300); };
+    }
+  }
+  let wishBusy = false;
+  async function refreshWishes(){ // l'organisateur sait seulement si chacun a saisi des idées, pas lesquelles ni pour qui
+    if(!state.draw || wishBusy || document.hidden) return; wishBusy = true;
+    const seen = state.seen || {};
+    await Promise.all(state.draw.filter(t => t.vid && seen[t.vid]).map(async t => {
+      const d = decode(t.token); if(!d) return;
+      try{ const r = await fetch(API + "/souhaits?k=" + wishKey(t.name, d), {cache:"no-store"}); if(!r.ok) return;
+        const j = await r.json(), txt = (j.texte || "").trim(); let has = !!txt;
+        try{ const a = JSON.parse(txt); if(Array.isArray(a)) has = a.some(x => (x.t||"").trim() || (x.u||"").trim()); }catch(e){}
+        wishState[t.name] = has; }catch(e){}
+    }));
+    wishBusy = false; renderRel();
+  }
+  setInterval(refreshWishes, 120000);
+  document.addEventListener("visibilitychange", refreshWishes);
   let giftArm = false;
   function renderGifts(){
     const box = $("giftBox"); if(!state.draw){ box.classList.add("hidden"); return; }
@@ -1075,7 +1160,7 @@
     const recu = state.recu || {}, n = state.draw.length, k = state.draw.filter(t => t.vid && recu[t.vid]).length;
     $("giftCount").textContent = "🎁 " + k + " personne" + (k > 1 ? "s" : "") + " sur " + n + " " + (k > 1 ? "ont reçu leur" : "a reçu son") + " cadeau.";
     const open = giftOpen();
-    $("giftShow").disabled = !open;
+    $("giftShow").disabled = !open; renderRel();
     $("giftWhen").textContent = open ? "" : "Le bouton sera disponible le lendemain de la date de remise (" + fmtDate(lastDay()) + ").";
     $("giftWhen").classList.toggle("hidden", open);
     if(!open) $("giftList").innerHTML = "";
@@ -1107,7 +1192,7 @@
         const got = await r.json(); state.seen = state.seen || {};
         let changed = false;
         for(const id of ids){ if(got[id] && state.seen[id] !== got[id]){ state.seen[id] = got[id]; changed = true; } }
-        if(changed){ save(); renderSend(); }
+        if(changed){ save(); renderSend(); refreshWishes(); }
       }
     }catch(e){ $("seenErr").classList.remove("hidden"); }
     try{ // cadeaux reçus (coché par chaque participant sur sa page)
@@ -1182,6 +1267,7 @@
   let nextT = null;
   function renderNext(){
     if(!state.draw) return;
+    renderRel();
     const todo = state.draw.filter(t => !state.sent[t.name]);
     todo.sort((a,b)=> (state.changed[b.name]?1:0) - (state.changed[a.name]?1:0));
     nextT = todo[0] || null;
@@ -1412,7 +1498,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.24"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.25"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
