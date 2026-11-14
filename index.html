@@ -196,6 +196,8 @@
       <h3>🎄 Rappel avant la remise</h3>
       <p>Si une date de remise est indiquée, le bouton <b>Rappel avant la remise</b> (sous la liste d'envoi) prépare un seul message WhatsApp pour le groupe, avec le nombre de jours restants calculé automatiquement (« Plus que 12 jours… », « C'est demain… », « C'est aujourd'hui… », ou « La remise a commencé » pendant une période). Il ne révèle rien et disparaît une fois la remise passée.</p>
       <p>Le bouton <b>Prévenir tout le monde des messages de remerciement</b> prépare un seul message WhatsApp, à envoyer au groupe ou aux contacts de ton choix, qui invite chacun à rouvrir son lien. Il ne révèle rien.</p>
+      <h3>🎁 Ma page cadeau</h3>
+      <p>Si tu participes aussi, ouvre une fois ton propre lien sur ton téléphone&nbsp;: un bouton <b>Ma page cadeau</b> apparaît ensuite en haut de l'appli pour la rouvrir.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -217,6 +219,7 @@
   <h1>🎅 Secret Santa<span id="groupTitle"></span></h1>
   <p class="sub">Tirage au sort avec exclusions par groupe. Chacun reçoit un lien WhatsApp personnel&nbsp;: toi, tu ne vois jamais qui offre à qui.</p>
 
+  <div class="card hidden" id="myPagesCard"><div class="actions" id="myPages" style="margin-top:0"></div></div>
   <div class="card ssBar">
     <label for="ssSelect">🎄 Mes Secret Santa</label>
     <div class="actions" style="margin-top:0;align-items:center">
@@ -365,7 +368,7 @@
       <h3>💌 Merci pour mon cadeau</h3>
       <p>Après avoir reçu ton cadeau, écris un petit mot dans <b>Merci pour mon cadeau</b> puis appuie sur <b>Envoyer</b>. La personne qui te l'a offert le verra sur sa page, sans que tu saches qui c'est. Et si la personne à qui tu offres t'écrit un mot, il s'affiche sur ta page sous le nom.</p>
       <h3>📲 Garder mon lien</h3>
-      <p>Le bouton <b>Garder mon lien sur l'écran d'accueil</b>, en bas de la page, ajoute ta page sur l'écran d'accueil de ton téléphone ou de ton ordinateur (ou t'explique comment faire). Elle s'ouvre alors directement, comme une appli.</p>
+      <p>Une fois ton lien ouvert, l'appli Secret Santa s'en souvient sur ce téléphone ou cet ordinateur&nbsp;: en ouvrant l'appli (ou l'adresse du site), tu retrouves ta page cadeau.</p>
       <h3>🔁 Revenir plus tard</h3>
       <p>Garde le message reçu&nbsp;: rouvre ton lien quand tu veux pour modifier tes cadeaux ou voir si la personne à qui tu offres a ajouté des idées.</p>
       <p style="margin-top:16px;font-size:13px;color:var(--muted)">Bonnes fêtes ! 🎄</p>
@@ -416,7 +419,7 @@
       <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
     </div>
     <div style="margin-top:30px">
-      <button class="btn" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
+      <button class="btn hidden" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
       <div id="homeHow" class="wishBox hidden"></div>
     </div>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
@@ -567,20 +570,15 @@
     if(!d) return false;
     $("admin").classList.add("hidden");
     $("reveal").classList.remove("hidden");
+    try{ // retenir ce lien sur cet appareil : l'appli le rouvrira d'un bouton
+      const L = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok);
+      L.unshift({tok, who:(d.first || d.giver), group:d.group || ""}); localStorage.setItem("secretSanta.mesLiens", JSON.stringify(L.slice(0, 5)));
+    }catch(e){}
     // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
     let installEvt = null;
-    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; });
+    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("homeBtn").classList.remove("hidden"); });
     window.addEventListener("appinstalled", ()=>{ $("homeHow").innerHTML = "✅ C'est fait : ton lien est sur l'écran d'accueil."; $("homeHow").classList.remove("hidden"); });
-    $("homeBtn").onclick = async ()=>{
-      if(installEvt){ installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; return; }
-      const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
-      const how = ios ? "Dans <b>Safari</b>, touche le bouton <b>Partager</b> (le carré avec une flèche vers le haut), puis <b>Sur l'écran d'accueil</b> et <b>Ajouter</b>."
-        : android ? "Dans <b>Chrome</b>, touche le menu <b>⋮</b> en haut à droite, puis <b>Ajouter à l'écran d'accueil</b> (ou <b>Installer l'appli</b>) et confirme."
-        : "Dans <b>Chrome</b> ou <b>Edge</b>, clique sur l'icône d'installation à droite de la barre d'adresse, ou ouvre le menu <b>⋮</b> et choisis <b>Installer</b>. Tu peux aussi l'ajouter à tes favoris avec <b>Ctrl + D</b>.";
-      $("homeHow").innerHTML = how + "<br><br>Si le lien s'est ouvert dans WhatsApp, ouvre-le d'abord dans ton navigateur (menu <b>⋮</b> ou <b>⋯</b> → <b>Ouvrir dans le navigateur</b>).<br><br>Tu peux aussi garder ton lien en le copiant&nbsp;: <button class='btn' id='homeCopy' style='background:#f3cf6b;color:#5a1010;margin-top:6px'>Copier mon lien</button>";
-      $("homeHow").classList.remove("hidden");
-      $("homeCopy").onclick = async (e)=>{ try{ await navigator.clipboard.writeText(location.href); e.target.textContent = "Copié ✓"; }catch(_){ e.target.textContent = "Échec"; } };
-    };
+    $("homeBtn").onclick = async ()=>{ if(!installEvt) return; installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; $("homeBtn").classList.add("hidden"); };
     const hp = $("helpP");
     $("helpPBtn").onclick = ()=>{ if(hp.showModal) hp.showModal(); else hp.setAttribute("open",""); };
     $("helpPClose").onclick = ()=>{ if(hp.close) hp.close(); else hp.removeAttribute("open"); };
@@ -723,6 +721,13 @@
     return true;
   }
   if(showReveal()) return;
+  let mesLiens = []; try{ mesLiens = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => decode(x.tok)); }catch(e){}
+  if(mesLiens.length){
+    const orga = ssList.ids.some(id => { try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); return st && st.people && st.people.some(p => (p.name||"").trim()); }catch(e){ return false; } });
+    if(!orga){ location.replace("#" + mesLiens[0].tok); location.reload(); return; } // simple participant : sa page s'ouvre directement
+    $("myPages").innerHTML = mesLiens.map(x => '<a class="btn primary small" href="#' + x.tok + '">🎁 Ma page cadeau' + (x.group ? " (Secret Santa " + esc(x.group) + ")" : "") + (mesLiens.length > 1 ? " · " + esc(x.who) : "") + '</a>').join(" ");
+    $("myPagesCard").classList.remove("hidden");
+  }
   window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
 
   // ---------- état organisateur ----------
@@ -1411,7 +1416,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.20"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.21"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
