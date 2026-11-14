@@ -823,6 +823,29 @@
     $("lockHint").classList.toggle("hidden", !on);
     ["addRow","toggleBulk"].forEach(id => $(id).disabled = on);
     if(on) $("bulk").classList.add("hidden");
+    guardFields();
+  }
+  // ---------- alerte avant de modifier un champ qui refait les liens pendant un tirage ----------
+  const GUARD_ALL = "Attention : un tirage est en cours.\n\nModifier ce champ refait TOUS les liens : il faudra les renvoyer à tout le monde, et les idées cadeaux, remerciements et photos déjà saisis ne seront plus retrouvés.\n\nModifier quand même ?";
+  const GUARD_ONE = "Attention : un tirage est en cours.\n\nModifier le prénom ou le nom refait le lien de cette personne et celui de la personne qui lui offre un cadeau : il faudra leur renvoyer, et ses idées cadeaux, remerciements et photos déjà saisis ne seront plus retrouvés.\n\nModifier quand même ?";
+  function guardFields(){
+    const on = !!state.draw;
+    const els = [["group",GUARD_ALL],["dateFrom",GUARD_ALL],["dateTo",GUARD_ALL],["budget",GUARD_ALL]].map(([id,m]) => [$(id), m])
+      .concat([...$("rows").querySelectorAll('input[data-k="name"], input[data-k="last"]')].map(el => [el, GUARD_ONE]));
+    els.forEach(([el, msg]) => {
+      if(!el) return;
+      if(!el.dataset.guard){ el.dataset.guard = "1";
+        const ask = e => {
+          if(!state.draw || !el.readOnly) return;
+          e.preventDefault(); el.blur();
+          if(!confirm(msg)) return;
+          el.readOnly = false; el.focus(); if(el.type === "date" && el.showPicker){ try{ el.showPicker(); }catch(_){} }
+        };
+        el.addEventListener("pointerdown", ask); el.addEventListener("focus", ask);
+        el.addEventListener("blur", ()=>{ setTimeout(()=>{ if(document.activeElement !== el) el.readOnly = !!state.draw; }, 0); });
+      }
+      if(document.activeElement !== el) el.readOnly = on;
+    });
   }
   function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
   function full(p){ return ((p.name||"").trim() + " " + (p.last||"").trim()).trim(); }
@@ -1498,7 +1521,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.25"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.26"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
