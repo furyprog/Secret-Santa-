@@ -635,14 +635,16 @@
       const M = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
       const m1 = /(\d{1,2}) (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre) (\d{4})/.exec(d.when || "");
       const gotFrom = m1 ? new Date(+m1[3], M.indexOf(m1[2]), +m1[1]) : null;
-      const showGot = ()=>{ if(!gotFrom || new Date() >= gotFrom){ $("gotBox").classList.remove("hidden"); $("myThanks").classList.remove("hidden"); return true; } return false; };
+      const showGot = ()=>{ if(!gotFrom || new Date() >= gotFrom){ $("gotBox").classList.remove("hidden"); syncThanks(); return true; } return false; };
+      // « Merci pour mon cadeau » : seulement quand « J'ai reçu mon cadeau » est cochée
+      function syncThanks(){ $("myThanks").classList.toggle("hidden", $("gotBox").classList.contains("hidden") || !$("gotChk").checked); }
       if(!showGot()){ const gt = setInterval(()=>{ if(showGot()) clearInterval(gt); }, 60000); }
-      fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; }).catch(()=>{});
+      fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; syncThanks(); }).catch(()=>{});
       $("gotChk").onchange = ()=>{
-        const v = $("gotChk").checked; $("gotMsg").textContent = "Enregistrement…";
+        const v = $("gotChk").checked; $("gotMsg").textContent = "Enregistrement…"; syncThanks();
         fetch(API + "/recu", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({id:d.vid, recu:v})})
           .then(r => { if(!r.ok) throw 0; $("gotMsg").textContent = v ? "✅ Merci, c'est noté !" : "✅ C'est noté."; })
-          .catch(()=>{ $("gotChk").checked = !v; $("gotMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
+          .catch(()=>{ $("gotChk").checked = !v; syncThanks(); $("gotMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
       };
       // mon petit mot pour la personne qui m'a offert mon cadeau
       const myThKey = thanksKey(d.giver, d); // la case s'affiche avec « J'ai reçu mon cadeau », à partir de la date de remise
@@ -1376,7 +1378,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.18"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.19"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
