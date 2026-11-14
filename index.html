@@ -577,6 +577,8 @@
     // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
     let installEvt = null;
     window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; });
+    // déjà ouverte dans l'appli installée : pas de bouton (la page est retenue, bouton « Ma page cadeau » dans l'appli)
+    if((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone) $("homeBtn").classList.add("hidden");
     window.addEventListener("appinstalled", ()=>{ $("homeHow").innerHTML = "✅ C'est fait : ton lien est sur l'écran d'accueil."; $("homeHow").classList.remove("hidden"); });
     $("homeBtn").onclick = async ()=>{
       if(installEvt){ installEvt.prompt(); try{ await installEvt.userChoice; }catch(e){} installEvt = null; return; } // Android / ordinateur : installation directe
@@ -1421,7 +1423,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.22"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.23"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
