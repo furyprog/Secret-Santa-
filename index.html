@@ -631,8 +631,12 @@
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ loadHis(); loadThanks(); } });
       // mes propres idées (seulement si le lien a un code anonyme)
       if(!d.vid) return;
-      // case « J'ai reçu mon cadeau »
-      $("gotBox").classList.remove("hidden");
+      // case « J'ai reçu mon cadeau » : seulement à partir du (premier) jour de remise annoncé
+      const M = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+      const m1 = /(\d{1,2}) (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre) (\d{4})/.exec(d.when || "");
+      const gotFrom = m1 ? new Date(+m1[3], M.indexOf(m1[2]), +m1[1]) : null;
+      const showGot = ()=>{ if(!gotFrom || new Date() >= gotFrom){ $("gotBox").classList.remove("hidden"); return true; } return false; };
+      if(!showGot()){ const gt = setInterval(()=>{ if(showGot()) clearInterval(gt); }, 60000); }
       fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; }).catch(()=>{});
       $("gotChk").onchange = ()=>{
         const v = $("gotChk").checked; $("gotMsg").textContent = "Enregistrement…";
@@ -1373,7 +1377,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.16"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.17"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
