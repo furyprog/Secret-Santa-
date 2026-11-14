@@ -1498,6 +1498,22 @@
     if(name) ssList.names[ssList.cur] = name; else delete ssList.names[ssList.cur];
     saveList(); renderList(); $("ssNameBox").classList.add("hidden");
   };
+  // liens à bloquer (Secret Santa supprimés) : gardés en mémoire jusqu'à ce que le serveur les ait enregistrés
+  const CLOSE_LS = "secretSanta.aBloquer";
+  function toClose(){ try{ const a = JSON.parse(localStorage.getItem(CLOSE_LS) || "[]"); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+  let closing = null;
+  function flushClosed(add){
+    if(add && add.length){ try{ localStorage.setItem(CLOSE_LS, JSON.stringify([...new Set([...toClose(), ...add])])); }catch(e){} }
+    if(closing) return closing.then(()=> flushClosed());
+    const ids = toClose(); if(!ids.length) return Promise.resolve([]);
+    closing = Promise.all(ids.map(id => fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:closedKey(id), id, texte:"supprime"})}).then(r => r.ok).catch(()=>false)))
+      .then(ok => { const done = ids.filter((id, i) => ok[i]); const left = toClose().filter(id => !done.includes(id));
+        try{ if(left.length) localStorage.setItem(CLOSE_LS, JSON.stringify(left)); else localStorage.removeItem(CLOSE_LS); }catch(e){}
+        closing = null; return left; });
+    return closing;
+  }
+  flushClosed(); window.addEventListener("online", ()=> flushClosed());
+  setInterval(()=>{ if(toClose().length) flushClosed(); }, 60000);
   let delArm = false;
   $("ssDel").onclick = async ()=>{
     if(!delArm){ delArm = true; $("ssDel").textContent = "Confirmer la suppression ?"; setTimeout(()=>{ delArm = false; $("ssDel").textContent = "Supprimer"; }, 3000); return; }
@@ -1508,9 +1524,11 @@
     if(vids.length){
       if(!confirm("Supprimer ce Secret Santa ?\n\nLes liens envoyés aux participants ne seront plus accessibles : ils verront que ce Secret Santa a été supprimé.\n\nCette suppression est définitive.")) return;
       $("ssDel").disabled = true; $("ssDel").textContent = "Suppression…";
-      const ok = await Promise.all(vids.map(id => fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:closedKey(id), id, texte:"supprime"})}).then(r => r.ok).catch(()=>false)));
+      const before = toClose();
+      const left = await flushClosed(vids);
       $("ssDel").disabled = false; $("ssDel").textContent = "Supprimer";
-      if(ok.includes(false) && !confirm("Impossible de bloquer les liens pour le moment (pas de connexion internet ?).\n\nSi tu supprimes quand même, les liens resteront accessibles. Supprimer quand même ?")) return;
+      if(left.some(id => vids.includes(id)) && !confirm("Impossible de bloquer les liens pour le moment (pas de connexion internet ?).\n\nSi tu supprimes quand même, les liens seront bloqués automatiquement dès que l'appli sera ouverte avec internet. Supprimer quand même ?")){
+        try{ localStorage.setItem(CLOSE_LS, JSON.stringify(before)); }catch(e){} return; }
     }
     try{ localStorage.removeItem(LS); localStorage.removeItem(LS + ".precedent"); }catch(e){}
     delete ssList.names[ssList.cur];
@@ -1553,7 +1571,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.28"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.29"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
