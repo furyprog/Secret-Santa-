@@ -482,6 +482,8 @@
     return "m" + h32(base).toString(36).padStart(7,"0") + h32("SM2|" + base).toString(36).padStart(7,"0"); }
   function photoKey(name, d){ const base = "photo|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
     return "p" + h32(base).toString(36).padStart(7,"0") + h32("SP2|" + base).toString(36).padStart(7,"0"); }
+  // Secret Santa supprimé : marque rangée sous un code calculé à partir du code anonyme du lien
+  function closedKey(vid){ return "x" + h32("suppr|" + vid).toString(36).padStart(7,"0") + h32("SX2|" + vid).toString(36).padStart(7,"0"); }
   function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
   function h32(str){ let h = 2166136261; for(const c of new TextEncoder().encode(str)){ h ^= c; h = Math.imul(h, 16777619) >>> 0; } return h; }
   function stream(seed, n){ let x = seed || 1; const out = []; for(let i=0;i<n;i++){ x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out.push(x & 255); } return out; }
@@ -599,6 +601,15 @@
     $("helpPClose").onclick = ()=>{ if(hp.close) hp.close(); else hp.removeAttribute("open"); };
     $("hello").textContent = "🎅 Bonjour,\n" + (d.first || d.giver) + " !";
     if(d.group){ $("groupLine").textContent = "Secret Santa " + d.group; $("groupLine").classList.remove("hidden"); document.title = "Secret Santa " + d.group; }
+    // lien d'un Secret Santa supprimé par l'organisateur : plus accessible
+    const showClosed = ()=>{
+      try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok))); }catch(e){}
+      const ver = ($("reveal").querySelector(".appVersion") || {}).textContent || "";
+      $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Ce Secret Santa a été supprimé par l\'organisateur : ce lien n\'est plus valable.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
+      $("reveal").querySelector(".appVersion").textContent = ver;
+    };
+    const closedP = d.vid ? fetch(API + "/souhaits?k=" + closedKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => j && j.texte === "supprime").catch(()=>false) : Promise.resolve(false);
+    closedP.then(c => { if(c) showClosed(); });
     let opening = false;
     let readyAt = 0;
     const ready = ()=>{ readyAt = Date.now(); $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
@@ -617,9 +628,10 @@
     } else ready();
     const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau
       opening = true; $("tap").classList.add("hidden");
-      jingle(); $("gift").classList.add("opening");
-      setTimeout(confetti, 1000);
-      setTimeout(reveal, 1350); };
+      closedP.then(c => { if(c) return showClosed();
+        jingle(); $("gift").classList.add("opening");
+        setTimeout(confetti, 1000);
+        setTimeout(reveal, 1350); }); };
     const reveal = ()=>{ $("gift").classList.add("hidden"); markSeen(d.vid);
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
@@ -1487,9 +1499,20 @@
     saveList(); renderList(); $("ssNameBox").classList.add("hidden");
   };
   let delArm = false;
-  $("ssDel").onclick = ()=>{
+  $("ssDel").onclick = async ()=>{
     if(!delArm){ delArm = true; $("ssDel").textContent = "Confirmer la suppression ?"; setTimeout(()=>{ delArm = false; $("ssDel").textContent = "Supprimer"; }, 3000); return; }
-    try{ localStorage.removeItem(LS); }catch(e){}
+    delArm = false; $("ssDel").textContent = "Supprimer";
+    // liens déjà créés (tirage actuel et précédent) : on les rend inaccessibles
+    let pd = null; try{ pd = JSON.parse(localStorage.getItem(LS + ".precedent")); }catch(e){}
+    const vids = [...new Set([...(state.draw || []), ...((pd && pd.draw) || [])].map(t => t.vid).filter(Boolean))];
+    if(vids.length){
+      if(!confirm("Supprimer ce Secret Santa ?\n\nLes liens envoyés aux participants ne seront plus accessibles : ils verront que ce Secret Santa a été supprimé.\n\nCette suppression est définitive.")) return;
+      $("ssDel").disabled = true; $("ssDel").textContent = "Suppression…";
+      const ok = await Promise.all(vids.map(id => fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:closedKey(id), id, texte:"supprime"})}).then(r => r.ok).catch(()=>false)));
+      $("ssDel").disabled = false; $("ssDel").textContent = "Supprimer";
+      if(ok.includes(false) && !confirm("Impossible de bloquer les liens pour le moment (pas de connexion internet ?).\n\nSi tu supprimes quand même, les liens resteront accessibles. Supprimer quand même ?")) return;
+    }
+    try{ localStorage.removeItem(LS); localStorage.removeItem(LS + ".precedent"); }catch(e){}
     delete ssList.names[ssList.cur];
     if(ssList.ids.length < 2){ saveList(); location.reload(); return; } // c'était le seul : il est remplacé par un Secret Santa vide
     ssList.ids = ssList.ids.filter(x => x !== ssList.cur); ssList.cur = ssList.ids[0]; saveList(); location.reload();
@@ -1530,7 +1553,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.27"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.28"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
