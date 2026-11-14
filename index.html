@@ -408,6 +408,7 @@
       <p id="myThanksMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
       <div style="margin-top:12px">
         <label class="btn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin:0;cursor:pointer">📷 Ajouter une photo de mon cadeau<input type="file" id="myPhotoFile" accept="image/*" class="hidden"></label>
+        <label class="btn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin:8px 0 0;cursor:pointer">📸 Prendre une photo<input type="file" id="myPhotoCam" accept="image/*" capture="environment" class="hidden"></label>
         <img id="myPhotoImg" class="hidden" alt="" style="display:block;max-width:100%;border-radius:10px;margin-top:10px">
         <button class="btn hidden" id="myPhotoDel" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin-top:8px">Retirer la photo</button>
         <p id="myPhotoMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
@@ -687,7 +688,8 @@
       const gotFrom = m1 ? new Date(+m1[3], M.indexOf(m1[2]), +m1[1]) : null;
       const showGot = ()=>{ if(!gotFrom || new Date() >= gotFrom){ $("gotBox").classList.remove("hidden"); syncThanks(); return true; } return false; };
       // « Merci pour mon cadeau » : seulement quand « J'ai reçu mon cadeau » est cochée
-      function syncThanks(){ $("myThanks").classList.toggle("hidden", $("gotBox").classList.contains("hidden") || !$("gotChk").checked); }
+      function syncThanks(){ const got = !$("gotBox").classList.contains("hidden") && $("gotChk").checked;
+        $("myThanks").classList.toggle("hidden", !got); $("myWish").classList.toggle("hidden", got); }
       if(!showGot()){ const gt = setInterval(()=>{ if(showGot()) clearInterval(gt); }, 60000); }
       fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; syncThanks(); }).catch(()=>{});
       $("gotChk").onchange = ()=>{
@@ -711,8 +713,8 @@
       const showMyPhoto = img => { $("myPhotoImg").src = img || ""; $("myPhotoImg").classList.toggle("hidden", !img); $("myPhotoDel").classList.toggle("hidden", !img); };
       fetch(API + "/photo?k=" + myPhKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.img) showMyPhoto(j.img); }).catch(()=>{});
       const sendPhoto = img => fetch(API + "/photo", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myPhKey, id:d.vid, img})}).then(r => { if(!r.ok) throw 0; });
-      $("myPhotoFile").onchange = ()=>{
-        const f = $("myPhotoFile").files[0]; if(!f) return;
+      const onPhoto = inp => ()=>{
+        const f = inp.files[0]; if(!f) return;
         $("myPhotoMsg").textContent = "Envoi de la photo…";
         const im = new Image(), url = URL.createObjectURL(f);
         im.onload = ()=>{
@@ -723,8 +725,9 @@
           sendPhoto(img).then(()=>{ showMyPhoto(img); $("myPhotoMsg").textContent = "✅ Photo envoyée"; }).catch(()=>{ $("myPhotoMsg").textContent = "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; });
         };
         im.onerror = ()=>{ $("myPhotoMsg").textContent = "⚠️ Cette image ne peut pas être lue."; };
-        im.src = url; $("myPhotoFile").value = "";
+        im.src = url; inp.value = "";
       };
+      $("myPhotoFile").onchange = onPhoto($("myPhotoFile")); $("myPhotoCam").onchange = onPhoto($("myPhotoCam"));
       $("myPhotoDel").onclick = ()=> sendPhoto("").then(()=>{ showMyPhoto(""); $("myPhotoMsg").textContent = "✅ Photo retirée"; }).catch(()=>{ $("myPhotoMsg").textContent = "⚠️ Impossible pour le moment. Réessaie plus tard."; });
       const myKey = wishKey(d.giver, d);
       const rows = $("myWishRows");
@@ -735,7 +738,7 @@
         r.querySelector(".x").onclick = ()=>{ r.remove(); if(!rows.children.length) addRow(); $("myWishMsg").textContent = ""; };
         rows.appendChild(r); return r; };
       addRow();
-      $("myWish").classList.remove("hidden");
+      if(!$("gotChk").checked) $("myWish").classList.remove("hidden");
       let touched = false;
       rows.addEventListener("input", ()=>{ touched = true; $("myWishMsg").textContent = ""; });
       fetch(API + "/souhaits?k=" + myKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
@@ -925,8 +928,12 @@
   }
   function showWhen(){ const w = whenText(); $("whenPreview").textContent = w ? "→ « " + w + " »" : ""; }
   $("dateFrom").value = state.dateFrom || ""; $("dateTo").value = state.dateTo || ""; showWhen();
-  $("dateFrom").onchange = ()=>{ state.dateFrom = $("dateFrom").value; showWhen(); settingsChanged("La date a changé"); };
-  $("dateTo").onchange = ()=>{ state.dateTo = $("dateTo").value; showWhen(); settingsChanged("La date a changé"); };
+  function todayISO(){ const t = new Date(); return t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0"); }
+  function setDateMin(){ $("dateFrom").min = $("dateTo").min = todayISO(); }
+  setDateMin();
+  const DATE_PAST = "La date de remise ne peut pas être antérieure à aujourd'hui.";
+  $("dateFrom").onchange = ()=>{ setDateMin(); if($("dateFrom").value && $("dateFrom").value < todayISO()){ alert(DATE_PAST); $("dateFrom").value = state.dateFrom || ""; return; } state.dateFrom = $("dateFrom").value; showWhen(); settingsChanged("La date a changé"); };
+  $("dateTo").onchange = ()=>{ setDateMin(); if($("dateTo").value && $("dateTo").value < todayISO()){ alert(DATE_PAST); $("dateTo").value = state.dateTo || ""; return; } state.dateTo = $("dateTo").value; showWhen(); settingsChanged("La date a changé"); };
   function ssTitle(){ return "Secret Santa" + (state.group ? " " + state.group : ""); }
   function showGroup(){ $("groupTitle").textContent = state.group ? " " + state.group : ""; }
   $("group").value = state.group || ""; showGroup();
@@ -1038,6 +1045,8 @@
     const sizes = {}; people.forEach((p,i)=>{ const f=famKey(p,i); sizes[f]=(sizes[f]||0)+1; });
     const big = Object.entries(sizes).find(([f,c])=> c > people.length - c);
     if(big) return fail("Impossible : le groupe « " + big[0].slice(2) + " » compte plus de la moitié des participants.");
+    setDateMin();
+    if([state.dateFrom, state.dateTo].some(v => v && v < todayISO())) return fail(DATE_PAST + " Choisis une nouvelle date.");
     if(state.draw && !drawArm){ drawArm = true; $("draw").textContent = "⚠️ Confirmer un nouveau tirage ?"; setTimeout(()=>{drawArm=false;$("draw").textContent="🎲 Relancer le tirage";},4000); return; }
     drawArm = false;
     keepPrev();
@@ -1521,7 +1530,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.26"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.27"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
