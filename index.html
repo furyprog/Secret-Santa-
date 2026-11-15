@@ -485,6 +485,12 @@
   // Secret Santa supprimé : marque rangée sous un code calculé à partir du code anonyme du lien
   function verKey(vid){ return "v" + h32("vers|" + vid).toString(36).padStart(7,"0") + h32("SV2|" + vid).toString(36).padStart(7,"0"); }
   function tokHash(t){ return h32("T|" + t).toString(36).padStart(7,"0") + h32("T2|" + t).toString(36).padStart(7,"0"); }
+  async function aesKey(keyTok){ return crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", new TextEncoder().encode("SSK|" + keyTok)), "AES-GCM", false, ["encrypt","decrypt"]); }
+  async function encFor(text, keyTok){ const iv = crypto.getRandomValues(new Uint8Array(12));
+    const c = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv}, await aesKey(keyTok), new TextEncoder().encode(text)));
+    let bin = ""; [...iv, ...c].forEach(x => bin += String.fromCharCode(x)); return btoa(bin); }
+  async function decFor(b64, keyTok){ const all = Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+    return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:all.slice(0,12)}, await aesKey(keyTok), all.slice(12))); }
   let flushingV = false;
   function flushVersions(){ // envoi au serveur, réessayé plus tard si pas d'internet
     if(flushingV) return; let q = []; try{ q = JSON.parse(localStorage.getItem("secretSanta.aPublier") || "[]"); }catch(e){}
@@ -632,9 +638,20 @@
       $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Le tirage a été modifié : ce lien n\'est plus valable. Ouvre le dernier lien que tu as reçu.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
       $("reveal").querySelector(".appVersion").textContent = ver;
     };
-    const verP = d.vid ? fetch(API + "/souhaits?k=" + verKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => !!(j && j.texte && (j.texte === "remplace" || (j.texte.startsWith("t:") && j.texte !== "t:" + tokHash(tok))))).catch(()=>false) : Promise.resolve(false);
-    const closedP = Promise.all([closedP0, verP]).then(([c, v]) => c ? "supprime" : v ? "remplace" : "");
-    closedP.then(c => { if(c === "supprime") showClosed(); else if(c === "remplace") showReplaced(); });
+    // réponse : false (lien à jour), true (plus valable), ou le lien à jour (on l'ouvre à la place)
+    const verP = d.vid ? fetch(API + "/souhaits?k=" + verKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(async j => {
+      const x = j && j.texte; if(!x) return false;
+      if(x === "remplace") return true;
+      if(x.startsWith("t:")) return x !== "t:" + tokHash(tok);
+      const o = JSON.parse(x); if(o.t === tokHash(tok)) return false;
+      const e = (o.r || []).find(y => y.h === tokHash(tok));
+      if(e){ try{ const nt = await decFor(e.c, tok); if(decode(nt)) return nt; }catch(err){} }
+      return true; }).catch(()=>false) : Promise.resolve(false);
+    const closedP = Promise.all([closedP0, verP]).then(([c, v]) => c ? "supprime" : typeof v === "string" ? "nouveau:" + v : v ? "remplace" : "");
+    closedP.then(c => { if(c === "supprime") showClosed(); else if(c === "remplace") showReplaced();
+      else if(c.startsWith("nouveau:")){ // ancien lien : on ouvre la page à jour
+        try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok))); }catch(e){}
+        location.replace("#" + c.slice(8)); location.reload(); } });
     let opening = false;
     let readyAt = 0;
     const ready = ()=>{ readyAt = Date.now(); $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
@@ -653,7 +670,7 @@
     } else ready();
     const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau
       opening = true; $("tap").classList.add("hidden");
-      closedP.then(c => { if(c === "supprime") return showClosed(); if(c === "remplace") return showReplaced();
+      closedP.then(c => { if(c === "supprime") return showClosed(); if(c === "remplace") return showReplaced(); if(c) return;
         jingle(); $("gift").classList.add("opening");
         setTimeout(confetti, 1000);
         setTimeout(reveal, 1350); }); };
@@ -834,24 +851,40 @@
     const a1 = rememberVids(state.draw), a2 = rememberVids(pd && pd.draw);
     if(a1 || a2){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} } }
   const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); publishVersions(); };
-  // tirage modifié (ajout, retrait, nouveau tirage…) : le serveur garde, pour chaque code de lien, une empreinte du lien valable.
-  // Un ancien lien voit que ce n'est plus lui et l'indique au lieu d'afficher l'ancien résultat. Aucun nom n'est envoyé.
-  function publishVersions(){
-    if(!state.draw) return;
-    if(!state.pub){ // première fois : les liens des tirages d'avant ne sont pas touchés sans accord
-      state.pub = {}; const cur0 = new Set(state.draw.map(t => t.vid)); (state.allVids || []).forEach(v => { if(!cur0.has(v)) state.pub[v] = "ancien"; }); }
-    const pub = state.pub, out = [];
-    const anySent = state.draw.some(t => state.sent && state.sent[t.name]);
-    state.draw.forEach(t => { if(!t.vid || !t.token) return; const want = "t:" + tokHash(t.token);
-      if((pub[t.vid] || (state.sent && state.sent[t.name])) && pub[t.vid] !== want){ pub[t.vid] = want; out.push({k:verKey(t.vid), id:t.vid, texte:want}); } });
-    if(anySent){ const cur = new Set(state.draw.map(t => t.vid));
-      (state.allVids || []).forEach(v => { if(!cur.has(v) && pub[v] !== "remplace" && pub[v] !== "ancien"){ pub[v] = "remplace"; out.push({k:verKey(v), id:v, texte:"remplace"}); } }); }
-    if(!out.length) return;
-    try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
-    let q = []; try{ q = JSON.parse(localStorage.getItem("secretSanta.aPublier") || "[]"); }catch(e){}
-    q = q.filter(x => !out.some(o => o.k === x.k)).concat(out);
-    try{ localStorage.setItem("secretSanta.aPublier", JSON.stringify(q)); }catch(e){}
-    flushVersions();
+  // tirage modifié (ajout, retrait, nouveau tirage…) : pour chaque lien déjà envoyé, le serveur garde le lien valable,
+  // chiffré avec l'ancien lien lui-même (seul celui qui a l'ancien lien peut le lire). L'ancien lien ouvre alors la page à jour.
+  let publishing = false, publishAgain = false, ssDeleted = false;
+  async function publishVersions(){
+    if(ssDeleted || !state.draw || !(window.crypto && crypto.subtle)) return;
+    if(publishing){ publishAgain = true; return; } publishing = true;
+    try{
+      const hist = state.hist = state.hist || {}, pub = state.pub = state.pub || {}, out = [];
+      // liens envoyés (ou déjà suivis) : on retient chaque version
+      state.draw.forEach(t => { if(!t.vid || !t.token) return;
+        if(!(hist[t.vid] || (state.sent && state.sent[t.name]))) return;
+        const h = hist[t.vid] = hist[t.vid] || {name:t.name, toks:[]}; h.name = t.name;
+        if(!h.toks.includes(t.token)) h.toks = h.toks.concat(t.token).slice(-10); });
+      const curByName = {}; state.draw.forEach(t => { if(t.token) curByName[t.name] = t.token; });
+      for(const vid of Object.keys(hist)){
+        const h = hist[vid], target = curByName[h.name] || null;
+        const sig = target ? tokHash(target) + "|" + h.toks.length : "remplace";
+        if(pub[vid] === sig) continue;
+        let texte = "remplace";
+        if(target){ const r = [];
+          for(const old of h.toks){ if(old !== target) r.push({h:tokHash(old), c: await encFor(target, old)}); }
+          texte = JSON.stringify({t:tokHash(target), r}); }
+        pub[vid] = sig; out.push({k:verKey(vid), id:vid, texte});
+      }
+      if(out.length && !ssDeleted){
+        try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+        let q = []; try{ q = JSON.parse(localStorage.getItem("secretSanta.aPublier") || "[]"); }catch(e){}
+        q = q.filter(x => !out.some(o => o.k === x.k)).concat(out);
+        try{ localStorage.setItem("secretSanta.aPublier", JSON.stringify(q)); }catch(e){}
+        flushVersions();
+      }
+    }catch(e){}
+    publishing = false;
+    if(publishAgain){ publishAgain = false; publishVersions(); }
   }
 
   function renderRows(){
@@ -1600,6 +1633,7 @@
       if(left.some(id => vids.includes(id)) && !confirm("Impossible de bloquer les liens pour le moment (pas de connexion internet ?).\n\nSi tu supprimes quand même, les liens seront bloqués automatiquement dès que l'appli sera ouverte avec internet. Supprimer quand même ?")){
         try{ localStorage.setItem(CLOSE_LS, JSON.stringify(before)); }catch(e){} return; }
     }
+    ssDeleted = true;
     try{ localStorage.removeItem(LS); localStorage.removeItem(LS + ".precedent"); }catch(e){}
     forgetLinks(vids); // le bouton « Ma page cadeau » de ce Secret Santa disparaît
     delete ssList.names[ssList.cur];
@@ -1642,7 +1676,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.35"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.36"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
