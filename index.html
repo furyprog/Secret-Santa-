@@ -86,18 +86,18 @@
   @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
   .reveal p{opacity:.92}
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%} /* le téléphone ne grossit plus certains textes tout seul : mêmes tailles partout */
-  @media (max-width:600px){ /* page cadeau sur smartphone : plus compacte en hauteur */
-    .reveal{padding:8px 12px;align-items:flex-start}
-    .reveal h1{font-size:28px;margin:4px 0;line-height:1.15}
-    .reveal p{margin:6px 0}
-    .reveal .name{font-size:38px;margin:2px 0}
-    .reveal .gift{margin:8px auto 6px}
-    .reveal .wishBox{margin:8px 0 !important;padding:9px 12px}
-    .reveal .wishBox p:empty{display:none}
-    .reveal .wishBox p{margin:4px 0 0 !important}
-    .reveal #calLine{margin:2px 0 6px !important}
-    .reveal .box > div[style*="margin-top:30px"]{margin-top:12px !important}
-    .reveal .box > p[style*="margin-top:40px"]{margin-top:16px !important}
+  @media (max-width:600px){ /* page cadeau sur smartphone : plus compacte en hauteur (pas les pages « supprimé » / « plus valable », qui restent centrées) */
+    .reveal:not(.msgOnly){padding:8px 12px}
+    .reveal:not(.msgOnly) h1{font-size:28px;margin:4px 0;line-height:1.15}
+    .reveal:not(.msgOnly) p{margin:6px 0}
+    .reveal:not(.msgOnly) .name{font-size:38px;margin:2px 0}
+    .reveal:not(.msgOnly) .gift{margin:8px auto 6px}
+    .reveal:not(.msgOnly) .wishBox{margin:8px 0 !important;padding:9px 12px}
+    .reveal:not(.msgOnly) .wishBox p:empty{display:none}
+    .reveal:not(.msgOnly) .wishBox p{margin:4px 0 0 !important}
+    .reveal:not(.msgOnly) #calLine{margin:2px 0 6px !important}
+    .reveal:not(.msgOnly) .box > div[style*="margin-top:30px"]{margin-top:12px !important}
+    .reveal:not(.msgOnly) .box > p[style*="margin-top:40px"]{margin-top:16px !important}
   }
   .wishBox{background:rgba(255,255,255,.12);border:1px solid rgba(255,231,168,.5);border-radius:12px;padding:12px 14px;margin:12px 0;text-align:left;font-size:16px}
   .wishBox b{color:#ffe7a8}
@@ -675,14 +675,14 @@
     const showClosed = ()=>{
       try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok))); }catch(e){}
       const ver = ($("reveal").querySelector(".appVersion") || {}).textContent || "";
-      $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Ce Secret Santa a été supprimé par l\'organisateur : ce lien n\'est plus valable.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
+      $("reveal").classList.add("msgOnly"); $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Ce Secret Santa a été supprimé par l\'organisateur : ce lien n\'est plus valable.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
       $("reveal").querySelector(".appVersion").textContent = ver;
     };
     const closedP0 = d.vid ? fetch(API + "/souhaits?k=" + closedKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => j && j.texte === "supprime").catch(()=>false) : Promise.resolve(false);
     // lien remplacé par un plus récent (tirage modifié) : on ne montre pas l'ancien résultat
     const showReplaced = ()=>{
       const ver = ($("reveal").querySelector(".appVersion") || {}).textContent || "";
-      $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Le tirage a été modifié : ce lien n\'est plus valable. Ouvre le dernier lien que tu as reçu.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
+      $("reveal").classList.add("msgOnly"); $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Le tirage a été modifié : ce lien n\'est plus valable. Ouvre le dernier lien que tu as reçu.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
       $("reveal").querySelector(".appVersion").textContent = ver;
     };
     // réponse : false (lien à jour), true (plus valable), ou le lien à jour (on l'ouvre à la place)
@@ -1778,7 +1778,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.44"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.45"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
