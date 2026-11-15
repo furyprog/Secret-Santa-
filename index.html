@@ -453,6 +453,7 @@
     <div style="margin-top:30px">
       <button class="btn hidden" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
       <div id="homeHow" class="wishBox hidden"></div>
+      <button class="btn" id="orgaBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin-top:10px">🎄 Organiser mon propre Secret Santa</button>
     </div>
     <p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>
   </div>
@@ -663,6 +664,8 @@
       $("homeHow").innerHTML = "Touche <b>Partager</b> ⬆️ en bas de Safari, puis <b>Sur l'écran d'accueil</b>.";
       $("homeHow").classList.remove("hidden");
     };
+    // un participant peut aussi organiser son propre Secret Santa : l'appli s'ouvrira ensuite sur la partie organisateur
+    $("orgaBtn").onclick = ()=>{ try{ localStorage.setItem("secretSanta.organise", "1"); }catch(e){} location.href = location.href.split("#")[0].split("?")[0]; };
     const hp = $("helpP");
     $("helpPBtn").onclick = ()=>{ if(hp.showModal) hp.showModal(); else hp.setAttribute("open",""); };
     $("helpPClose").onclick = ()=>{ if(hp.close) hp.close(); else hp.removeAttribute("open"); };
@@ -906,9 +909,12 @@
   let mesLiens = []; try{ mesLiens = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => decode(x.tok)); }catch(e){}
   if(mesLiens.length){
     const orga = ssList.ids.some(id => { try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); return st && st.people && st.people.some(p => (p.name||"").trim()); }catch(e){ return false; } });
-    if(!orga){ location.replace("#" + mesLiens[0].tok); location.reload(); return; } // simple participant : sa page s'ouvre directement
+    if(!orga && mesLiens.some(x => x.own === undefined)){ // téléphone de participant : ses liens viennent d'un autre organisateur, on les garde même s'il organise ensuite
+      mesLiens.forEach(x => { if(x.own === undefined) x.own = false; }); try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(mesLiens)); }catch(e){} }
+    let wantsOrga = false; try{ wantsOrga = localStorage.getItem("secretSanta.organise") === "1"; }catch(e){}
+    if(!orga && !wantsOrga){ location.replace("#" + mesLiens[0].tok); location.reload(); return; } // simple participant : sa page s'ouvre directement
     // organisateur : un lien d'un de ses tirages n'est gardé que si ce tirage existe encore (sinon Secret Santa supprimé ou tirage refait)
-    mesLiens = mesLiens.filter(x => { const v = decode(x.tok).vid, cur = v ? ownTok(v) : null; if(cur){ x.tok = cur; return true; } return x.own === false; });
+    if(orga) mesLiens = mesLiens.filter(x => { const v = decode(x.tok).vid, cur = v ? ownTok(v) : null; if(cur){ x.tok = cur; return true; } return x.own === false; });
     try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(mesLiens)); }catch(e){}
   }
   if(mesLiens.length){
@@ -1772,7 +1778,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.43"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.44"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
