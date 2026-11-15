@@ -53,7 +53,10 @@
   #relBox{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:12px}
   .relTitle{margin:0 0 6px;font-weight:700;font-size:16px}
   .relChips{display:flex;flex-wrap:wrap;gap:6px}
-  .relChips a.btn{font-size:14px;padding:7px 11px}
+  .relChips .btn{font-size:14px;padding:7px 11px}
+  .relRow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+  .relRow:first-child{border-top:none}
+  .relRow .who{flex:1}.relRow .who small{display:block;color:var(--muted)}
   .send .who{flex:1;min-width:120px}
   .send .who b{display:block}
   .send .who small{color:var(--muted);display:block}
@@ -143,13 +146,13 @@
   .helpBtn{position:absolute;top:14px;right:16px;z-index:20;width:48px;height:48px;padding:0;border:none;background:none;cursor:pointer;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4));transition:transform .2s}
   .helpBtn:hover{transform:rotate(-8deg) scale(1.08)}
   .helpBtn img{width:100%;height:100%;display:block}
-  #help,#helpP,#saveAsk,#askBox{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
-  #help::backdrop,#helpP::backdrop,#saveAsk::backdrop,#askBox::backdrop{background:rgba(10,30,20,.6)}
-  #help .hd,#helpP .hd,#saveAsk .hd,#askBox .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
+  #help,#helpP,#saveAsk,#askBox,#relDlg{border:none;border-radius:16px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:85vh;color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+  #help::backdrop,#helpP::backdrop,#saveAsk::backdrop,#askBox::backdrop,#relDlg::backdrop{background:rgba(10,30,20,.6)}
+  #help .hd,#helpP .hd,#saveAsk .hd,#askBox .hd,#relDlg .hd{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;padding:12px 16px;border-bottom:3px solid var(--gold)}
   #help .hd img,#helpP .hd img,#saveAsk .hd img{width:32px;height:32px}
-  #help .hd h2,#helpP .hd h2,#saveAsk .hd h2,#askBox .hd h2{color:#fff;margin:0;flex:1}
-  #help .hd button,#helpP .hd button,#saveAsk .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
-  #help .bd,#helpP .bd,#saveAsk .bd,#askBox .bd{padding:6px 18px 18px;font-size:15px}
+  #help .hd h2,#helpP .hd h2,#saveAsk .hd h2,#askBox .hd h2,#relDlg .hd h2{color:#fff;margin:0;flex:1}
+  #help .hd button,#helpP .hd button,#saveAsk .hd button,#relDlg .hd button{background:none;border:none;color:#fff;font-size:28px;line-height:1;cursor:pointer}
+  #help .bd,#helpP .bd,#saveAsk .bd,#askBox .bd,#relDlg .bd{padding:6px 18px 18px;font-size:15px}
   #help h3,#helpP h3,#saveAsk h3{font-family:Fraunces,serif;font-size:17px;color:var(--green);margin:16px 0 4px}
   #help p,#help ul,#helpP p,#helpP ul,#saveAsk p,#saveAsk ul{margin:4px 0}
   #help ul,#helpP ul,#saveAsk ul{padding-left:20px}
@@ -164,6 +167,13 @@
   <div class="bd">
     <p id="askTxt" style="white-space:pre-line;margin:12px 0"></p>
     <div class="actions" style="justify-content:flex-end"><button class="btn primary small" id="askOk">OK</button><button class="btn ghost small" id="askNo">Annuler</button></div>
+  </div>
+</dialog>
+<dialog id="relDlg">
+  <div class="hd"><h2 id="relDlgT"></h2><button id="relDlgX" aria-label="Fermer">×</button></div>
+  <div class="bd">
+    <p class="hint" id="relDlgH" style="margin:10px 0"></p>
+    <div id="relDlgList"></div>
   </div>
 </dialog>
 <div id="admin" class="wrap">
@@ -211,11 +221,11 @@
       <p>Sur sa page cadeau, chacun peut écrire un petit mot dans <b>Merci pour mon cadeau</b>. Seule la personne qui lui a offert son cadeau le voit, sur sa propre page. Personne ne découvre qui lui a offert son cadeau, et toi non plus&nbsp;: le serveur ne reçoit que le message et un code anonyme.</p>
       <h3>🎄 Rappel avant la remise</h3>
       <p>Si une date de remise est indiquée, le bouton <b>Rappel avant la remise</b> (zone Relances, sous la liste d'envoi) prépare un seul message WhatsApp pour le groupe, avec le nombre de jours restants calculé automatiquement (« Plus que 12 jours… », « C'est demain… », « C'est aujourd'hui… », ou « La remise a commencé » pendant une période). Il ne révèle rien et disparaît une fois la remise passée.</p>
-      <p>Le bouton <b>Messages de remerciement</b> (zone Relances) prépare un seul message WhatsApp, à envoyer au groupe ou aux contacts de ton choix, qui invite chacun à rouvrir son lien. Il ne révèle rien.</p>
+      <p>Le bouton <b>Remerciements</b> (zone Relances) prépare un seul message WhatsApp, à envoyer au groupe ou aux contacts de ton choix, qui invite chacun à rouvrir son lien. Il ne révèle rien.</p>
       <h3>🎁 Ma page cadeau</h3>
       <p>Si tu participes aussi, ouvre une fois ton propre lien sur ton téléphone&nbsp;: un bouton <b>Ma page cadeau</b> apparaît ensuite en haut de l'appli pour la rouvrir.</p>
       <h3>🔔 Relances</h3>
-      <p>Sous la liste d'envoi, la zone <b>Relances</b> regroupe tout&nbsp;: les messages pour tout le groupe, puis la liste des personnes qui n'ont pas encore ouvert leur lien et celle des personnes qui n'ont saisi aucune idée cadeau. Appuie sur un nom&nbsp;: WhatsApp s'ouvre avec un rappel et son lien. Un ✓ après un nom indique que tu l'as déjà relancé. Rien ne révèle qui offre à qui.</p>
+      <p>Sous la liste d'envoi, la zone <b>Relances</b> regroupe tout. <b>Liens non ouverts</b> et <b>Sans idée cadeau</b> ouvrent une fenêtre avec la liste des personnes concernées&nbsp;; <b>Relancer</b> ouvre WhatsApp avec un rappel et son lien, et « ✓ relancé le… » indique que c'est déjà fait. Rien ne révèle qui offre à qui.</p>
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
@@ -320,18 +330,11 @@
       <div id="giftList" style="margin-top:8px"></div>
       <div id="relBox">
         <p class="relTitle">📣 Relances</p>
-        <p class="hint" style="margin:0 0 6px">Un message pour tout le groupe&nbsp;:</p>
         <div class="relChips">
           <a class="btn wa small hidden" id="remindWa" href="#" target="_blank" rel="noopener">🎄 Rappel avant la remise</a>
-          <a class="btn wa small" id="thanksWa" href="#" target="_blank" rel="noopener">💌 Messages de remerciement</a>
-        </div>
-        <div id="relLienPart" class="hidden">
-          <p class="hint" id="relLienInfo" style="margin:12px 0 6px"></p>
-          <div class="relChips" id="relLienList"></div>
-        </div>
-        <div id="relIdeePart" class="hidden">
-          <p class="hint" id="relIdeeInfo" style="margin:12px 0 6px"></p>
-          <div class="relChips" id="relIdeeList"></div>
+          <a class="btn wa small" id="thanksWa" href="#" target="_blank" rel="noopener">💌 Remerciements</a>
+          <button class="btn ghost small" id="relLienBtn">🔔 Liens non ouverts (0)</button>
+          <button class="btn ghost small" id="relIdeeBtn">📝 Sans idée cadeau (0)</button>
         </div>
       </div>
     </div>
@@ -1402,25 +1405,32 @@
     list.sort((a,b) => (last[a.name] || "").localeCompare(last[b.name] || ""));
     return list;
   }
-  function renderRel(){ // chaque personne concernée a son propre bouton (son nom) ; ✓ = déjà relancée
+  let relKind = ""; // liste ouverte dans la fenêtre des relances
+  function renderRel(){ // les listes ne s'affichent que dans une fenêtre, à la demande
     if(!state.draw) return;
-    for(const kind of ["lien", "idee"]){
-      const list = relNext(kind), K = kind === "lien" ? "Lien" : "Idee";
-      $("rel" + K + "Part").classList.toggle("hidden", !list.length);
-      $("rel" + K + "Info").textContent = (kind === "lien" ? "🔔 N'ont pas encore ouvert leur lien" : "📝 N'ont saisi aucune idée cadeau") + " (" + list.length + ") : appuie sur un nom pour lui envoyer un rappel avec son lien.";
-      const last = ((state.relance || {})[kind]) || {}, box = $("rel" + K + "List");
-      box.innerHTML = "";
-      list.slice().sort((x,y) => x.name.localeCompare(y.name, "fr")).forEach(t => {
-        const b = document.createElement("a");
-        b.className = "btn wa small"; b.target = "_blank"; b.rel = "noopener";
-        b.textContent = t.name + (last[t.name] ? " ✓" : "");
-        if(last[t.name]) b.title = "Déjà relancé le " + new Date(last[t.name]).toLocaleDateString("fr-FR");
-        b.href = "https://api.whatsapp.com/send?phone=" + waNumber(t.phone) + "&text=" + encodeURIComponent(relMsg(t, kind));
-        b.onclick = ()=>{ state.relance = state.relance || {}; state.relance[kind] = state.relance[kind] || {}; state.relance[kind][t.name] = new Date().toISOString(); save(); setTimeout(renderRel, 300); };
-        box.appendChild(b);
-      });
-    }
+    $("relLienBtn").textContent = "🔔 Liens non ouverts (" + relNext("lien").length + ")";
+    $("relIdeeBtn").textContent = "📝 Sans idée cadeau (" + relNext("idee").length + ")";
+    if(relKind && $("relDlg").open) fillRel();
   }
+  function fillRel(){
+    const kind = relKind, list = relNext(kind).sort((x,y) => x.name.localeCompare(y.name, "fr")), last = ((state.relance || {})[kind]) || {};
+    $("relDlgT").textContent = kind === "lien" ? "🔔 Liens non ouverts" : "📝 Sans idée cadeau";
+    $("relDlgH").textContent = !list.length ? "Personne pour le moment 👍" : (kind === "lien" ? "Ces personnes n'ont pas encore ouvert leur lien." : "Ces personnes n'ont saisi aucune idée cadeau.") + " Appuie sur Relancer : WhatsApp s'ouvre avec un rappel et son lien.";
+    const box = $("relDlgList"); box.innerHTML = "";
+    list.forEach(t => {
+      const r = document.createElement("div"); r.className = "relRow";
+      r.innerHTML = '<div class="who"><b>' + esc(t.name) + '</b>' + (last[t.name] ? '<small>✓ relancé le ' + new Date(last[t.name]).toLocaleDateString("fr-FR", {day:"2-digit", month:"2-digit"}) + '</small>' : '') + '</div>';
+      const b = document.createElement("a");
+      b.className = "btn wa small"; b.target = "_blank"; b.rel = "noopener"; b.textContent = "Relancer";
+      b.href = "https://api.whatsapp.com/send?phone=" + waNumber(t.phone) + "&text=" + encodeURIComponent(relMsg(t, kind));
+      b.onclick = ()=>{ state.relance = state.relance || {}; state.relance[kind] = state.relance[kind] || {}; state.relance[kind][t.name] = new Date().toISOString(); save(); setTimeout(renderRel, 300); };
+      r.appendChild(b); box.appendChild(r);
+    });
+  }
+  function openRel(kind){ relKind = kind; fillRel(); const d = $("relDlg"); if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+  $("relLienBtn").onclick = ()=> openRel("lien");
+  $("relIdeeBtn").onclick = ()=> openRel("idee");
+  $("relDlgX").onclick = ()=>{ relKind = ""; $("relDlg").close ? $("relDlg").close() : $("relDlg").removeAttribute("open"); };
   let wishBusy = false;
   async function refreshWishes(){ // l'organisateur sait seulement si chacun a saisi des idées, pas lesquelles ni pour qui
     if(!state.draw || wishBusy || document.hidden) return; wishBusy = true;
@@ -1806,7 +1816,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.54"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.55"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
