@@ -572,6 +572,11 @@
   }
 
   // ---------- mode révélation ----------
+  // lien d'un tirage fait sur cet appareil : renvoie le lien actuel de cette personne (null si ce tirage n'existe plus ici)
+  function ownTok(vid){
+    for(const id of ssList.ids){ try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); const t = st && st.draw && st.draw.find(x => x.vid === vid && x.token); if(t) return t.token; }catch(e){} }
+    return null;
+  }
   function showReveal(){
     const tok = location.hash.slice(1);
     const d = decode(tok);
@@ -580,7 +585,7 @@
     $("reveal").classList.remove("hidden");
     try{ // retenir ce lien sur cet appareil : l'appli le rouvrira d'un bouton
       const L = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok);
-      L.unshift({tok, who:(d.first || d.giver), group:d.group || ""}); localStorage.setItem("secretSanta.mesLiens", JSON.stringify(L.slice(0, 5)));
+      L.unshift({tok, who:(d.first || d.giver), group:d.group || "", own: !!(d.vid && ownTok(d.vid))}); localStorage.setItem("secretSanta.mesLiens", JSON.stringify(L.slice(0, 5)));
     }catch(e){}
     // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
     let installEvt = null;
@@ -780,6 +785,11 @@
   if(mesLiens.length){
     const orga = ssList.ids.some(id => { try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); return st && st.people && st.people.some(p => (p.name||"").trim()); }catch(e){ return false; } });
     if(!orga){ location.replace("#" + mesLiens[0].tok); location.reload(); return; } // simple participant : sa page s'ouvre directement
+    // organisateur : un lien d'un de ses tirages n'est gardé que si ce tirage existe encore (sinon Secret Santa supprimé ou tirage refait)
+    mesLiens = mesLiens.filter(x => { const v = decode(x.tok).vid, cur = v ? ownTok(v) : null; if(cur){ x.tok = cur; return true; } return x.own === false; });
+    try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(mesLiens)); }catch(e){}
+  }
+  if(mesLiens.length){
     $("myPages").innerHTML = mesLiens.map(x => '<a class="btn primary small" href="#' + x.tok + '">🎁 Ma page cadeau' + (x.group ? " (Secret Santa " + esc(x.group) + ")" : "") + (mesLiens.length > 1 ? " · " + esc(x.who) : "") + '</a>').join(" ");
     $("myPagesCard").classList.remove("hidden");
     // Secret Santa supprimé par l'organisateur : on oublie son lien et on retire son bouton
@@ -928,6 +938,7 @@
   function phoneOf(n){ const p = state.people.find(q => full(q) === n); return p ? p.phone : ""; }
   function tok(g, r, vid){
     if(!vid){ const t = (state.draw || []).find(x => x.name === g); vid = t && t.vid ? t.vid : ""; }
+    if(vid){ state.allVids = state.allVids || []; if(!state.allVids.includes(vid)) state.allVids.push(vid); } // tous les liens créés, pour pouvoir les bloquer si le Secret Santa est supprimé
     const pin = pinOf(phoneOf(g)), age = ageOf(r);
     const gp = state.people.find(q => full(q) === g), first = gp ? (gp.name||"").trim() : "";
     if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, "", state.group, whenText(), "", vid, first);
@@ -1528,7 +1539,8 @@
     delArm = false; $("ssDel").textContent = "Supprimer";
     // liens déjà créés (tirage actuel et précédent) : on les rend inaccessibles
     let pd = null; try{ pd = JSON.parse(localStorage.getItem(LS + ".precedent")); }catch(e){}
-    const vids = [...new Set([...(state.draw || []), ...((pd && pd.draw) || [])].map(t => t.vid).filter(Boolean))];
+    const all = [...(state.draw || []), ...((pd && pd.draw) || [])];
+    const vids = [...new Set([...all.map(t => t.vid), ...all.map(t => { const d = decode(t.token); return d && d.vid; }), ...(state.allVids || [])].filter(Boolean))];
     if(vids.length){
       if(!confirm("Supprimer ce Secret Santa ?\n\nLes liens envoyés aux participants ne seront plus accessibles : ils verront que ce Secret Santa a été supprimé.\n\nCette suppression est définitive.")) return;
       $("ssDel").disabled = true; $("ssDel").textContent = "Suppression…";
@@ -1580,7 +1592,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.31"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.33"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
