@@ -806,6 +806,13 @@
   let state = { people:[{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""}], budget:"", orgPhone:"", group:"", dateFrom:"", dateTo:"", draw:null, sent:{}, changed:{}, confirmed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
   let onSave = null;
+  // codes de tous les liens déjà créés (tirage actuel et précédent compris), pour pouvoir les bloquer si ce Secret Santa est supprimé
+  function rememberVids(draw){ let add = false; state.allVids = state.allVids || [];
+    (draw || []).forEach(t => { const d = t.token ? decode(t.token) : null; [t.vid, d && d.vid].forEach(v => { if(v && !state.allVids.includes(v)){ state.allVids.push(v); add = true; } }); });
+    return add; }
+  { let pd = null; try{ pd = JSON.parse(localStorage.getItem(LS + ".precedent")); }catch(e){}
+    const a1 = rememberVids(state.draw), a2 = rememberVids(pd && pd.draw);
+    if(a1 || a2){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} } }
   const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); };
 
   function renderRows(){
@@ -887,6 +894,8 @@
   function updateCount(){ const n = valid().length; $("count").textContent = n + " participant" + (n>1?"s":""); }
   function keepPrev(){ // garde une copie du tirage avant de le remplacer ou de l'annuler
     if(!state.draw) return;
+    try{ const pd = JSON.parse(localStorage.getItem(LS + ".precedent")); rememberVids(pd && pd.draw); }catch(e){}
+    rememberVids(state.draw);
     try{ localStorage.setItem(LS + ".precedent", JSON.stringify({at:Date.now(), people:state.people, draw:state.draw, sent:state.sent, changed:state.changed, seen:state.seen||{}})); }catch(e){}
   }
   // ---------- correction d'un prénom / nom pendant un tirage : le tirage est gardé ----------
@@ -1592,7 +1601,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.33"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.34"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
