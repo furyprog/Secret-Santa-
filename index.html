@@ -655,6 +655,7 @@
     const tok = location.hash.slice(1);
     const d = decode(tok);
     if(!d) return false;
+    { const k = (d.org || "").split("\u0002"); d.gk = k[0] || d.giver; d.rk = k[1] || ""; } // identité stable (nom d'origine) si le prénom/nom a été corrigé
     $("admin").classList.add("hidden");
     $("reveal").classList.remove("hidden");
     try{ // retenir ce lien sur cet appareil : l'appli le rouvrira d'un bouton
@@ -720,13 +721,13 @@
         const pin = $("pin").value.replace(/\D/g,"");
         const txt = pin.length === 4 ? unlock(lockField, pin, d.giver) : null;
         if(txt === null){ $("pinErr").classList.remove("hidden"); $("pin").select(); return; }
-        const [r, a] = txt.split("\u0001"); d.receiver = r; d.age = a || ""; ready();
+        const [r, a, rk] = txt.split("\u0001"); d.receiver = r; d.age = a || ""; d.rk = rk || d.rk; ready();
       };
       $("pinOk").onclick = check;
       $("pin").onkeydown = e => { if(e.key === "Enter") check(); };
       $("pin").oninput = ()=>{ $("pinErr").classList.add("hidden"); };
     } else ready();
-    const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau
+    const open = ()=>{ d.rk = d.rk || d.receiver; if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau
       opening = true; $("tap").classList.add("hidden");
       closedP.then(c => { if(c === "supprime") return showClosed(); if(c === "remplace") return showReplaced(); if(c) return;
         jingle(); $("gift").classList.add("opening");
@@ -786,7 +787,7 @@
       const fixUrl = u => { u = (u||"").trim(); if(!u) return ""; if(!/^https?:\/\//i.test(u)) u = "https://" + u;
         try{ const x = new URL(u); return /^https?:$/.test(x.protocol) && x.hostname.includes(".") ? x.href : ""; }catch(e){ return ""; } };
       // idées de la personne à qui j'offre (mises à jour toutes seules)
-      const hisKey = wishKey(d.receiver, d);
+      const hisKey = wishKey(d.rk, d);
       const loadHis = ()=> fetch(API + "/souhaits?k=" + hisKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
         const items = parse(j.texte), box = $("hisWishTxt"); box.innerHTML = "";
         if(!items.length){ const c = document.createElement("span"); c.className = "cmt"; c.append("Pas encore d'idée pour le moment.", document.createElement("br"), "Elles s'afficheront ici dès qu'elle en aura écrit."); box.append(c); }
@@ -800,8 +801,8 @@
         $("hisWish").classList.remove("hidden");
       }).catch(()=>{});
       // petit mot laissé par la personne à qui j'offre
-      const thKey = thanksKey(d.receiver, d);
-      const phKey = photoKey(d.receiver, d);
+      const thKey = thanksKey(d.rk, d);
+      const phKey = photoKey(d.rk, d);
       const loadThanks = ()=> Promise.all([
         fetch(API + "/souhaits?k=" + thKey, {cache:"no-store"}).then(r => r.ok ? r.json() : {}).catch(()=>({})),
         fetch(API + "/photo?k=" + phKey, {cache:"no-store"}).then(r => r.ok ? r.json() : {}).catch(()=>({}))
@@ -812,7 +813,7 @@
         $("hisThanks").classList.toggle("hidden", !t && !img);
       });
       // « J'ai acheté ton cadeau » : coché par celui qui offre, vu par celui qui reçoit
-      const bKey = boughtKey(d.receiver, d), bId = boughtId(d.receiver, d);
+      const bKey = boughtKey(d.rk, d), bId = boughtId(d.rk, d);
       if(d.vid){
         $("boughtName").textContent = d.receiver; $("boughtBox").classList.remove("hidden");
         fetch(API + "/souhaits?k=" + bKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
@@ -827,7 +828,7 @@
             .catch(()=>{ $("boughtChk").checked = !v; $("boughtHelp").classList.toggle("hidden", !v); $("boughtMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
         };
       }
-      const myBKey = boughtKey(d.giver, d);
+      const myBKey = boughtKey(d.gk, d);
       const loadBought = ()=> fetch(API + "/souhaits?k=" + myBKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
         $("boughtForMe").classList.toggle("hidden", !(j && j.texte) || $("gotChk").checked); }).catch(()=>{});
       $("gotChk").addEventListener("change", loadBought);
@@ -852,7 +853,7 @@
           .catch(()=>{ $("gotChk").checked = !v; syncThanks(); $("gotMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
       };
       // mon petit mot pour la personne qui m'a offert mon cadeau
-      const myThKey = thanksKey(d.giver, d); // la case s'affiche avec « J'ai reçu mon cadeau », à partir de la date de remise
+      const myThKey = thanksKey(d.gk, d); // la case s'affiche avec « J'ai reçu mon cadeau », à partir de la date de remise
       fetch(API + "/souhaits?k=" + myThKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.texte && !$("myThanksTxt").value) $("myThanksTxt").value = j.texte; }).catch(()=>{});
       $("myThanksTxt").oninput = ()=>{ $("myThanksMsg").textContent = ""; };
       $("myThanksSave").onclick = ()=>{
@@ -862,7 +863,7 @@
           .catch(()=>{ $("myThanksMsg").textContent = "⚠️ Envoi impossible pour le moment. Réessaie plus tard."; });
       };
       // photo du cadeau reçu (réduite avant l'envoi)
-      const myPhKey = photoKey(d.giver, d);
+      const myPhKey = photoKey(d.gk, d);
       const showMyPhoto = img => { $("myPhotoImg").src = img || ""; $("myPhotoImg").classList.toggle("hidden", !img); $("myPhotoDel").classList.toggle("hidden", !img); };
       fetch(API + "/photo?k=" + myPhKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j.img) showMyPhoto(j.img); }).catch(()=>{});
       const sendPhoto = img => fetch(API + "/photo", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:myPhKey, id:d.vid, img})}).then(r => { if(!r.ok) throw 0; });
@@ -882,7 +883,7 @@
       };
       $("myPhotoFile").onchange = onPhoto($("myPhotoFile")); $("myPhotoCam").onchange = onPhoto($("myPhotoCam"));
       $("myPhotoDel").onclick = ()=> sendPhoto("").then(()=>{ showMyPhoto(""); $("myPhotoMsg").textContent = "✅ Photo retirée"; }).catch(()=>{ $("myPhotoMsg").textContent = "⚠️ Impossible pour le moment. Réessaie plus tard."; });
-      const myKey = wishKey(d.giver, d);
+      const myKey = wishKey(d.gk, d);
       const rows = $("myWishRows");
       const addRow = (it = {t:"", u:""}) => {
         const r = document.createElement("div"); r.className = "wishRow";
@@ -945,6 +946,19 @@
   let state = { people:[{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""},{name:"",last:"",family:"",age:"",phone:""}], budget:"", orgPhone:"", group:"", dateFrom:"", dateTo:"", draw:null, sent:{}, changed:{}, confirmed:{} };
   try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.people) state = Object.assign(state, s); }catch(e){}
   let onSave = null;
+  // chaque participant a un numéro (ordre de saisie) et une identité stable « kid » (son nom au moment du premier lien) :
+  // corriger un prénom ou un nom ne change ni le tirage ni ses idées cadeaux, remerciements, photos
+  function ensureIds(){ let ch = false; state.nextId = state.nextId || 1;
+    state.people.forEach(p => { if(p.id && p.id >= state.nextId) state.nextId = p.id + 1; });
+    state.people.forEach(p => { if(!p.id){ p.id = state.nextId++; ch = true; } });
+    if(state.draw) state.draw.forEach(t => { if(!t.pid){ const p = state.people.find(q => full(q) === t.name); if(p){ t.pid = p.id; ch = true; } } });
+    // tirage en cours : l'identité stable est le nom déjà utilisé dans les liens envoyés
+    if(state.draw) state.people.forEach(p => { if(!p.kid && full(p) && state.draw.some(t => t.pid === p.id)){ p.kid = full(p); ch = true; } });
+    return ch; }
+  function kidOf(name){ const p = state.people.find(q => full(q) === name); if(!p) return name;
+    if(!p.kid){ let k = full(p); if(state.people.some(q => q !== p && q.kid === k)) k += " #" + p.id; p.kid = k; }
+    return p.kid; }
+  if(ensureIds()){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
   // codes de tous les liens déjà créés (tirage actuel et précédent compris), pour pouvoir les bloquer si ce Secret Santa est supprimé
   function rememberVids(draw){ let add = false; state.allVids = state.allVids || [];
     (draw || []).forEach(t => { const d = t.token ? decode(t.token) : null; [t.vid, d && d.vid].forEach(v => { if(v && !state.allVids.includes(v)){ state.allVids.push(v); add = true; } }); });
@@ -952,7 +966,7 @@
   { let pd = null; try{ pd = JSON.parse(localStorage.getItem(LS + ".precedent")); }catch(e){}
     const a1 = rememberVids(state.draw), a2 = rememberVids(pd && pd.draw);
     if(a1 || a2){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} } }
-  const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); publishVersions(); };
+  const save = ()=>{ ensureIds(); try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); publishVersions(); };
   // tirage modifié (ajout, retrait, nouveau tirage…) : pour chaque lien déjà envoyé, le serveur garde le lien valable,
   // chiffré avec l'ancien lien lui-même (seul celui qui a l'ancien lien peut le lire). L'ancien lien ouvre alors la page à jour.
   let publishing = false, publishAgain = false, ssDeleted = false;
@@ -1014,7 +1028,7 @@
           save(); return;
         }
         if(state.draw) return; // prénom, nom, groupe : pris en compte à la fin de la saisie (voir onchange)
-        p[k] = inp.value; invalidate(); save(); updateCount(); });
+        p[k] = inp.value; if(k === "name" || k === "last") delete p.kid; invalidate(); save(); updateCount(); });
       r.querySelectorAll('[data-k=name],[data-k=last],[data-k=family]').forEach(inp => inp.onchange = ()=>{
         if(!state.draw) return;
         const k = inp.dataset.k, old = full(p), before = p[k];
@@ -1024,7 +1038,7 @@
         if(nw === old) { save(); return; }
         const clash = !p.name.trim() || state.people.some(q => q !== p && full(q).toLowerCase() === nw.toLowerCase());
         if(clash){ p[k] = before; inp.value = before; $("drawInfo").innerHTML = '<div class="err" style="display:block">' + (p.name.trim() ? "« " + esc(nw) + " » existe déjà." : "Le prénom ne peut pas être vide.") + '</div>'; showSendInfo(); return; }
-        renamePerson(old, nw);
+        renamePerson(old, nw, p);
       });
       r.querySelector(".x").onclick = ()=>{ state.people.splice(i,1); invalidate(); save(); renderRows(); };
       box.appendChild(r);
@@ -1041,7 +1055,7 @@
   }
   // ---------- alerte avant de modifier un champ qui refait les liens pendant un tirage ----------
   const GUARD_ALL = "Attention : un tirage est en cours.\n\nModifier ce champ refait TOUS les liens : il faudra les renvoyer à tout le monde, et les idées cadeaux, remerciements et photos déjà saisis ne seront plus retrouvés.\n\nModifier quand même ?";
-  const GUARD_ONE = "Attention : un tirage est en cours.\n\nModifier le prénom ou le nom refait le lien de cette personne et celui de la personne qui lui offre un cadeau : il faudra leur renvoyer, et ses idées cadeaux, remerciements et photos déjà saisis ne seront plus retrouvés.\n\nModifier quand même ?";
+  const GUARD_ONE = "Attention : un tirage est en cours.\n\nLe tirage est conservé et il n'y a rien à renvoyer : les liens déjà envoyés à cette personne et à celle qui lui offre un cadeau ouvriront la page corrigée. Ses idées cadeaux, remerciements et photos sont gardés.\n\nModifier quand même ?";
   function guardFields(){
     const on = !!state.draw;
     const els = [["group",GUARD_ALL],["dateFrom",GUARD_ALL],["dateTo",GUARD_ALL],["budget",GUARD_ALL]].map(([id,m]) => [$(id), m])
@@ -1074,15 +1088,16 @@
     try{ localStorage.setItem(LS + ".precedent", JSON.stringify({at:Date.now(), people:state.people, draw:state.draw, sent:state.sent, changed:state.changed, seen:state.seen||{}})); }catch(e){}
   }
   // ---------- correction d'un prénom / nom pendant un tirage : le tirage est gardé ----------
-  function renamePerson(old, nw){
-    const t = state.draw.find(x => x.name === old); if(!t){ save(); return; }
+  function renamePerson(old, nw, p){
+    const t = state.draw.find(x => p && p.id && x.pid === p.id) || state.draw.find(x => x.name === old); if(!t){ save(); return; }
+    if(p && !p.kid) p.kid = old; // identité stable : celle des liens déjà envoyés
     const rc = recv(t), G = state.draw.find(x => x !== t && recv(x) === old);
     t.name = nw; if(rc !== null) t.token = tok(nw, rc, t.vid);
     if(G) G.token = tok(G.name, nw);
-    for(const m of [state.sent, state.changed, state.confirmed || {}]){ if(old in m){ m[nw] = m[old]; delete m[old]; } }
-    state.sent[nw] = false; if(G) state.sent[G.name] = false;
+    for(const m of [state.sent, state.changed, state.confirmed || {}, wishState]){ if(old in m){ m[nw] = m[old]; delete m[old]; } }
+    // les liens déjà envoyés restent bons : l'ancien lien ouvre la page corrigée (voir publishVersions), rien à renvoyer
     save(); renderSend(); renderList();
-    $("drawInfo").innerHTML = '<div class="ok">✏️ Nom corrigé, le tirage est conservé. Renvoie leur lien à : ' + esc(nw) + (G ? ' et ' + esc(G.name) : '') + '.</div>';
+    $("drawInfo").innerHTML = '<div class="ok">✏️ Nom corrigé, le tirage est conservé. Rien à renvoyer : les liens déjà envoyés à ' + esc(nw) + (G ? ' et ' + esc(G.name) : '') + ' ouvrent la page corrigée.</div>';
     showSendInfo();
   }
   function checkGroups(){
@@ -1125,8 +1140,9 @@
     if(vid){ state.allVids = state.allVids || []; if(!state.allVids.includes(vid)) state.allVids.push(vid); addMesVids([vid]); } // tous les liens créés, pour pouvoir les bloquer si le Secret Santa est supprimé
     const pin = pinOf(phoneOf(g)), age = ageOf(r);
     const gp = state.people.find(q => full(q) === g), first = gp ? (gp.name||"").trim() : "";
-    if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, "", state.group, whenText(), "", vid, first);
-    return encode(g, r, state.budget, "", state.group, whenText(), age, vid, first);
+    const gk = kidOf(g), rk = kidOf(r), gkF = gk !== g ? gk : "", rkF = rk !== r ? rk : ""; // nom d'origine, seulement après une correction
+    if(pin) return encode(g, lock(r + "\u0001" + age + (rkF ? "\u0001" + rkF : ""), pin, g), state.budget, gkF, state.group, whenText(), "", vid, first);
+    return encode(g, r, state.budget, gkF + (rkF ? "\u0002" + rkF : ""), state.group, whenText(), age, vid, first);
   }
   function recv(t){ // destinataire en clair (l'organisateur connaît les téléphones)
     const d = decode(t.token); if(!d) return null;
@@ -1198,7 +1214,7 @@
     const N = full(p);
     if(!(p.name||"").trim()) return "Indique au moins le prénom.";
     if(state.draw.some(t => t.name.toLowerCase() === N.toLowerCase())) return "« " + N + " » participe déjà. Ajoute son nom ou une initiale pour les distinguer.";
-    state.people = state.people.filter(q => full(q)).concat([p]);
+    state.people = state.people.filter(q => full(q)).concat([p]); ensureIds();
     const fam = {};
     state.people.forEach(q=>{ const f = (q.family||"").trim().toLowerCase(); fam[full(q)] = f ? "f:"+f : "solo:"+full(q); });
     const tgt = t => recv(t);
@@ -1209,7 +1225,7 @@
     if(!G.vid) G.vid = newVid();
     G.token = tok(G.name, N); state.changed[G.name] = "ajout"; state.sent[G.name] = false; delete state.confirmed[G.name];
     const vid = newVid();
-    state.draw.push({name:N, phone:(p.phone||"").trim(), vid, token:tok(N, R, vid)});
+    state.draw.push({name:N, pid:p.id, phone:(p.phone||"").trim(), vid, token:tok(N, R, vid)});
     save(); renderRows(); renderSend();
     $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(N) + ' a été ajouté(e) au tirage. 2 personnes doivent recevoir un lien : ' + esc(N) + ' et ' + esc(G.name) + ' (en jaune ci-dessous, son destinataire a changé).</div>';
     return null;
@@ -1251,7 +1267,8 @@
   let drawArm = false;
   $("draw").onclick = ()=>{
     const err = $("err"); err.style.display = "none";
-    const people = valid().map(p=>({name:full(p), family:(p.family||"").trim(), phone:(p.phone||"").trim()}));
+    ensureIds();
+    const people = valid().map(p=>({name:full(p), id:p.id, family:(p.family||"").trim(), phone:(p.phone||"").trim()}));
     const fail = m => { err.textContent = m; err.style.display = "block"; };
     if(people.length < 3) return fail("Il faut au moins 3 participants.");
     const names = people.map(p=>p.name.toLowerCase());
@@ -1267,7 +1284,8 @@
     keepPrev();
     const res = doDraw(people);
     if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
-    state.draw = people.map((p,i)=>{ const vid = newVid(); return {name:p.name, phone:p.phone, vid, token:tok(p.name, people[res[i]].name, vid)}; });
+    ensureIds();
+    state.draw = people.map((p,i)=>{ const vid = newVid(); return {name:p.name, pid:p.id, phone:p.phone, vid, token:tok(p.name, people[res[i]].name, vid)}; });
     state.seen = {}; state.recu = {};
     state.sent = {}; state.changed = {}; state.confirmed = {}; save();
     $("draw").textContent = "🎲 Relancer le tirage";
@@ -1392,7 +1410,7 @@
     const seen = state.seen || {};
     await Promise.all(state.draw.filter(t => t.vid && seen[t.vid]).map(async t => {
       const d = decode(t.token); if(!d) return;
-      try{ const r = await fetch(API + "/souhaits?k=" + wishKey(t.name, d), {cache:"no-store"}); if(!r.ok) return;
+      try{ const r = await fetch(API + "/souhaits?k=" + wishKey(kidOf(t.name), d), {cache:"no-store"}); if(!r.ok) return;
         const j = await r.json(), txt = (j.texte || "").trim(); let has = !!txt;
         try{ const a = JSON.parse(txt); if(Array.isArray(a)) has = a.some(x => (x.t||"").trim() || (x.u||"").trim()); }catch(e){}
         wishState[t.name] = has; }catch(e){}
@@ -1455,7 +1473,7 @@
     try{ // « J'ai acheté ton cadeau » (coché par celui qui offre sur sa page)
       const res = await Promise.all(state.draw.filter(t => t.vid && t.token).map(async t => {
         const d = decode(t.token), r = recv(t); if(!d || r === null) return null;
-        const j = await fetch(API + "/souhaits?k=" + boughtKey(r, d), {cache:"no-store"}).then(x => x.ok ? x.json() : null).catch(()=>null);
+        const j = await fetch(API + "/souhaits?k=" + boughtKey(kidOf(r), d), {cache:"no-store"}).then(x => x.ok ? x.json() : null).catch(()=>null);
         return j ? [t.vid, j.texte === t.vid] : null; }));
       const bought = Object.assign({}, state.bought || {}); let ch = false;
       res.forEach(x => { if(x && !!bought[x[0]] !== x[1]){ if(x[1]) bought[x[0]] = true; else delete bought[x[0]]; ch = true; } });
@@ -1598,6 +1616,7 @@
       }
       if(!names.has(r) || r === d.giver) continue;
       got[d.giver] = {receiver:r, token:tk, vid:d.vid};
+      { const gk = (d.org || "").split("\u0002")[0]; const pp = gk && state.people.find(q => full(q) === d.giver); if(pp) pp.kid = gk; } // nom d'origine après une correction
     }
     const givers = Object.keys(got);
     if(!givers.length) return {err:"Aucun lien de ce Secret Santa n'a été reconnu dans le texte collé (vérifie que les participants sont toujours les mêmes)."};
@@ -1789,7 +1808,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.49"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.50"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
