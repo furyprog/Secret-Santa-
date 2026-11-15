@@ -1392,6 +1392,7 @@
   $("remindWa").onclick = ()=>{ const m = remindText(); if(!m) return false; $("remindWa").href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(m); };
   // ---------- relances : lien pas encore ouvert / aucune idée cadeau saisie (rien n'est révélé) ----------
   let wishState = {}; // nom -> true si la personne a saisi au moins une idée
+  var wishLoaded = false; // les idées ont été lues au moins une fois (var : utilisable avant cette ligne)
   function relMsg(t, kind){
     const pp = state.people.find(q => full(q) === t.name), first = pp ? pp.name.trim() : t.name;
     return "🎅 " + ssTitle() + " : petit rappel !\n\nBonjour,\n" + first + ", " + (kind === "lien"
@@ -1409,13 +1410,13 @@
   function renderRel(){ // les listes ne s'affichent que dans une fenêtre, à la demande
     if(!state.draw) return;
     $("relLienBtn").textContent = "🔔 Liens non ouverts (" + relNext("lien").length + ")";
-    $("relIdeeBtn").textContent = "📝 Sans idée cadeau (" + relNext("idee").length + ")";
+    $("relIdeeBtn").textContent = "📝 Sans idée cadeau (" + (wishLoaded ? relNext("idee").length : "…") + ")";
     if(relKind && $("relDlg").open) fillRel();
   }
   function fillRel(){
     const kind = relKind, list = relNext(kind).sort((x,y) => x.name.localeCompare(y.name, "fr")), last = ((state.relance || {})[kind]) || {};
     $("relDlgT").textContent = kind === "lien" ? "🔔 Liens non ouverts" : "📝 Sans idée cadeau";
-    $("relDlgH").textContent = !list.length ? "Personne pour le moment 👍" : (kind === "lien" ? "Ces personnes n'ont pas encore ouvert leur lien." : "Ces personnes n'ont saisi aucune idée cadeau.") + " Appuie sur Relancer : WhatsApp s'ouvre avec un rappel et son lien.";
+    $("relDlgH").textContent = kind === "idee" && !wishLoaded ? "Vérification en cours…" : !list.length ? "Personne pour le moment 👍" : (kind === "lien" ? "Ces personnes n'ont pas encore ouvert leur lien." : "Ces personnes n'ont saisi aucune idée cadeau.") + " Appuie sur Relancer : WhatsApp s'ouvre avec un rappel et son lien.";
     const box = $("relDlgList"); box.innerHTML = "";
     list.forEach(t => {
       const r = document.createElement("div"); r.className = "relRow";
@@ -1427,7 +1428,7 @@
       r.appendChild(b); box.appendChild(r);
     });
   }
-  function openRel(kind){ relKind = kind; fillRel(); const d = $("relDlg"); if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+  function openRel(kind){ relKind = kind; fillRel(); if(kind === "idee") refreshWishes(); const d = $("relDlg"); if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
   $("relLienBtn").onclick = ()=> openRel("lien");
   $("relIdeeBtn").onclick = ()=> openRel("idee");
   $("relDlgX").onclick = ()=>{ relKind = ""; $("relDlg").close ? $("relDlg").close() : $("relDlg").removeAttribute("open"); };
@@ -1442,7 +1443,7 @@
         try{ const a = JSON.parse(txt); if(Array.isArray(a)) has = a.some(x => (x.t||"").trim() || (x.u||"").trim()); }catch(e){}
         wishState[t.name] = has; }catch(e){}
     }));
-    wishBusy = false; renderRel();
+    wishBusy = false; wishLoaded = true; renderRel();
   }
   setInterval(refreshWishes, 120000);
   document.addEventListener("visibilitychange", refreshWishes);
@@ -1485,7 +1486,8 @@
         const got = await r.json(); state.seen = state.seen || {};
         let changed = false;
         for(const id of ids){ if(got[id] && state.seen[id] !== got[id]){ state.seen[id] = got[id]; changed = true; } }
-        if(changed){ save(); renderSend(); refreshWishes(); }
+        if(changed){ save(); renderSend(); }
+        if(changed || !wishLoaded) refreshWishes(); // au démarrage aussi : sinon le compte « sans idée cadeau » restait à 0 pendant 2 min
       }
     }catch(e){ $("seenErr").classList.remove("hidden"); }
     try{ // cadeaux reçus (coché par chaque participant sur sa page)
@@ -1816,7 +1818,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.55"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.56"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
