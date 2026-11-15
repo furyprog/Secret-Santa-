@@ -39,7 +39,7 @@
   .row.head{font-size:12px;font-weight:600;color:var(--muted)}
   .row input{padding:7px 8px;font-size:14px}
   .x{border:none;background:none;color:var(--muted);font-size:20px;cursor:pointer}
-  button.btn,a.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;font-size:15px;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;text-decoration:none}
+  button.btn,a.btn,label.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;font-size:15px;border:none;border-radius:10px;padding:10px 14px;cursor:pointer;text-decoration:none}
   .primary{background:var(--red);color:#fff}.primary:hover{background:var(--red-d)}
   .ghost{background:transparent;border:1px solid var(--line)!important;color:var(--ink)}
   .wa{background:#25d366;color:#fff}
@@ -1789,7 +1789,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.48"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.49"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
