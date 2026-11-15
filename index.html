@@ -391,7 +391,7 @@
     <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="margin-top:6px"></div></div>
     <div id="boughtBox" class="wishBox hidden">
       <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600;font-size:17px;color:#ffe7a8;margin:0"><input type="checkbox" id="boughtChk" style="width:22px;height:22px;flex:none"> 🛍️ J'ai acheté ton cadeau</label>
-      <p style="font-size:13px;margin:6px 0 0">Coche cette case quand tu as acheté le cadeau : <span id="boughtName"></span> le verra sur sa page, sans savoir qui tu es.</p>
+      <p id="boughtHelp" style="font-size:13px;margin:6px 0 0">Coche cette case quand tu as acheté le cadeau : <span id="boughtName"></span> le verra sur sa page, sans savoir qui tu es.</p>
       <p id="boughtMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
     </div>
     <div id="hisThanks" class="wishBox hidden"><b>💌 Un message de <span id="hisThanksName"></span> pour toi</b><div id="hisThanksTxt" style="white-space:pre-line;margin-top:6px"></div><img id="hisPhoto" class="hidden" alt="" style="display:block;max-width:100%;border-radius:10px;margin-top:10px"></div>
@@ -771,14 +771,14 @@
         $("boughtName").textContent = d.receiver; $("boughtBox").classList.remove("hidden");
         fetch(API + "/souhaits?k=" + bKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
           const t = (j && j.texte) || "";
-          if(t === d.vid) $("boughtChk").checked = true;
+          if(t === d.vid){ $("boughtChk").checked = true; $("boughtHelp").classList.add("hidden"); }
           else if(t) fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:bKey, id:bId, texte:""})}).catch(()=>{}); // coché par un ancien Secret Santa (tirage modifié) : effacé
         }).catch(()=>{});
         $("boughtChk").onchange = ()=>{
-          const v = $("boughtChk").checked; $("boughtMsg").textContent = "Enregistrement…";
+          const v = $("boughtChk").checked; $("boughtMsg").textContent = "Enregistrement…"; $("boughtHelp").classList.toggle("hidden", v); // explication masquée quand c'est coché
           fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:bKey, id:bId, texte: v ? d.vid : ""})})
             .then(r => { if(!r.ok) throw 0; $("boughtMsg").textContent = "✅ C'est noté."; })
-            .catch(()=>{ $("boughtChk").checked = !v; $("boughtMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
+            .catch(()=>{ $("boughtChk").checked = !v; $("boughtHelp").classList.toggle("hidden", !v); $("boughtMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
         };
       }
       const myBKey = boughtKey(d.giver, d);
@@ -1286,9 +1286,10 @@
   function seenTxt(t){
     if(!t.vid) return "";
     const v = (state.seen || {})[t.vid];
-    if(!v) return "⏳ lien pas encore ouvert";
+    const bt = (state.bought || {})[t.vid] ? " · 🛍️ cadeau acheté" : "";
+    if(!v) return "⏳ lien pas encore ouvert" + bt;
     const d = new Date(v);
-    return "👀 a ouvert son lien le " + d.toLocaleDateString("fr-FR", {day:"2-digit", month:"2-digit"}) + " à " + d.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
+    return "👀 a ouvert son lien le " + d.toLocaleDateString("fr-FR", {day:"2-digit", month:"2-digit"}) + " à " + d.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) + bt;
   }
   // cadeaux reçus : seulement un compte ; après la date de remise, un bouton montre ceux qui n'ont pas offert (jamais tous les binômes)
   function lastDay(){ const a = state.dateFrom, b = state.dateTo; return [a, b].filter(Boolean).sort().pop() || ""; }
@@ -1400,6 +1401,15 @@
         if(JSON.stringify(recu) !== old){ state.recu = recu; save(); }
         renderGifts();
       }
+    }catch(e){}
+    try{ // « J'ai acheté ton cadeau » (coché par celui qui offre sur sa page)
+      const res = await Promise.all(state.draw.filter(t => t.vid && t.token).map(async t => {
+        const d = decode(t.token), r = recv(t); if(!d || r === null) return null;
+        const j = await fetch(API + "/souhaits?k=" + boughtKey(r, d), {cache:"no-store"}).then(x => x.ok ? x.json() : null).catch(()=>null);
+        return j ? [t.vid, j.texte === t.vid] : null; }));
+      const bought = Object.assign({}, state.bought || {}); let ch = false;
+      res.forEach(x => { if(x && !!bought[x[0]] !== x[1]){ if(x[1]) bought[x[0]] = true; else delete bought[x[0]]; ch = true; } });
+      if(ch){ state.bought = bought; save(); renderSend(); }
     }catch(e){}
     seenBusy = false;
   }
@@ -1729,7 +1739,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.40"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.41"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
@@ -1740,7 +1750,8 @@
   let reloading = false;
   const reload = () => { if(reloading) return; reloading = true; location.reload(); };
   const hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener("controllerchange", () => { if(hadController) reload(); });
+  let needReload = false; // seulement si la page affichée est plus ancienne que la version en ligne (sinon elle est déjà à jour : pas de rechargement)
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if(hadController && needReload) reload(); });
   navigator.serviceWorker.register("sw.js", {updateViaCache: "none"}).then(reg => {
     reg.update().catch(()=>{});
     return fetch("sw.js?v=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
@@ -1748,7 +1759,7 @@
       if(!m || m[1] === APP_VERSION) return showRv();
       const k = "ss-maj-" + m[1];
       if(sessionStorage.getItem(k)) return showRv(); // une seule tentative par version
-      sessionStorage.setItem(k, "1");
+      sessionStorage.setItem(k, "1"); needReload = true;
       reg.update().catch(()=>{}).then(() => setTimeout(reload, 800));
     }).catch(showRv);
   }).catch(showRv);
