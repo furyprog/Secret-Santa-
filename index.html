@@ -988,7 +988,8 @@
         let texte = "remplace";
         if(target){ const r = [];
           for(const old of h.toks){ if(old !== target) r.push({h:tokHash(old), c: await encFor(target, old)}); }
-          texte = JSON.stringify({t:tokHash(target), r}); }
+          texte = JSON.stringify({t:tokHash(target), r});
+          while(texte.length > 4900 && r.length > 1){ r.shift(); texte = JSON.stringify({t:tokHash(target), r}); } } // le serveur coupe à 5000 caractères
         pub[vid] = sig; out.push({k:verKey(vid), id:vid, texte});
       }
       if(out.length && !ssDeleted){
@@ -1055,11 +1056,9 @@
   }
   // ---------- alerte avant de modifier un champ qui refait les liens pendant un tirage ----------
   const GUARD_ALL = "Attention : un tirage est en cours.\n\nModifier ce champ refait TOUS les liens : il faudra les renvoyer à tout le monde, et les idées cadeaux, remerciements et photos déjà saisis ne seront plus retrouvés.\n\nModifier quand même ?";
-  const GUARD_ONE = "Attention : un tirage est en cours.\n\nLe tirage est conservé et il n'y a rien à renvoyer : les liens déjà envoyés à cette personne et à celle qui lui offre un cadeau ouvriront la page corrigée. Ses idées cadeaux, remerciements et photos sont gardés.\n\nModifier quand même ?";
   function guardFields(){
     const on = !!state.draw;
-    const els = [["group",GUARD_ALL],["dateFrom",GUARD_ALL],["dateTo",GUARD_ALL],["budget",GUARD_ALL]].map(([id,m]) => [$(id), m])
-      .concat([...$("rows").querySelectorAll('input[data-k="name"], input[data-k="last"]')].map(el => [el, GUARD_ONE]));
+    const els = [["group",GUARD_ALL],["dateFrom",GUARD_ALL],["dateTo",GUARD_ALL],["budget",GUARD_ALL]].map(([id,m]) => [$(id), m]); // prénom / nom : plus d'alerte (le tirage et les liens envoyés restent bons)
     els.forEach(([el, msg]) => {
       if(!el) return;
       if(!el.dataset.guard){ el.dataset.guard = "1";
@@ -1808,7 +1807,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.50"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.51"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
