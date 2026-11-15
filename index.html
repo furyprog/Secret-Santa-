@@ -519,7 +519,11 @@
     for(let i=0;i<bytes.length;i++){ const b = parseInt(hex.substr(i*2,2),16) ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255); bytes[i]=b; sum=(sum+b)&255; }
     if(sum !== chk) return null;
     const parts = new TextDecoder().decode(bytes).split("|");
-    return (parts.length >= 2 && parts.length <= 9) ? {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||"", vid:parts[7]||"", first:parts[8]||""} : null;
+    if(parts.length < 2 || parts.length > 9) return null;
+    const d = {giver:parts[0], receiver:parts[1], budget:parts[2]||"", org:parts[3]||"", group:parts[4]||"", when:parts[5]||"", age:parts[6]||"", vid:parts[7]||"", first:parts[8]||""};
+    // champ 4 (après une correction) : nom d'origine de celui qui offre \u0002 nom d'origine du destinataire \u0002 précision|date|montant d'origine
+    const k = d.org.split("\u0002"); d.gk = k[0] || d.giver; d.rk = k[1] || ""; d.kb = (k[2] || "").replace(/\u0003/g, "|");
+    return d;
   }
 
   // ---------- petit serveur : qui a ouvert son lien (aucun nom, seulement un code anonyme) ----------
@@ -535,17 +539,18 @@
 
   // ---------- verrou par les 4 derniers chiffres du téléphone ----------
   // idées cadeaux : rangées sous un code calculé à partir du nom et des infos communes du tirage (aucun nom envoyé)
-  function wishKey(name, d){ const base = "souhaits|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+  function kbOf(d){ return d.kb || (d.group + "|" + d.when + "|" + d.budget); } // précision|date|montant du premier lien : les codes ne changent pas si on les modifie
+  function wishKey(name, d){ const base = "souhaits|" + name + "|" + kbOf(d);
     return "w" + h32(base).toString(36).padStart(7,"0") + h32("SW2|" + base).toString(36).padStart(7,"0"); }
   // petit mot de remerciement : même principe, autre code (le destinataire écrit, celui qui offre lit)
-  function thanksKey(name, d){ const base = "merci|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+  function thanksKey(name, d){ const base = "merci|" + name + "|" + kbOf(d);
     return "m" + h32(base).toString(36).padStart(7,"0") + h32("SM2|" + base).toString(36).padStart(7,"0"); }
   // « J'ai acheté ton cadeau » : rangé sous un code calculé à partir du nom de celui qui reçoit (aucun nom envoyé)
-  function boughtKey(name, d){ const base = "achat|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+  function boughtKey(name, d){ const base = "achat|" + name + "|" + kbOf(d);
     return "a" + h32(base).toString(36).padStart(7,"0") + h32("SA2|" + base).toString(36).padStart(7,"0"); }
-  function boughtId(name, d){ const base = "achatid|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+  function boughtId(name, d){ const base = "achatid|" + name + "|" + kbOf(d);
     return "b" + h32(base).toString(36).padStart(7,"0") + h32("SB2|" + base).toString(36).padStart(7,"0"); }
-  function photoKey(name, d){ const base = "photo|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+  function photoKey(name, d){ const base = "photo|" + name + "|" + kbOf(d);
     return "p" + h32(base).toString(36).padStart(7,"0") + h32("SP2|" + base).toString(36).padStart(7,"0"); }
   // Secret Santa supprimé : marque rangée sous un code calculé à partir du code anonyme du lien
   function verKey(vid){ return "v" + h32("vers|" + vid).toString(36).padStart(7,"0") + h32("SV2|" + vid).toString(36).padStart(7,"0"); }
@@ -669,7 +674,6 @@
     const tok = location.hash.slice(1);
     const d = decode(tok);
     if(!d) return false;
-    { const k = (d.org || "").split("\u0002"); d.gk = k[0] || d.giver; d.rk = k[1] || ""; } // identité stable (nom d'origine) si le prénom/nom a été corrigé
     $("admin").classList.add("hidden");
     $("reveal").classList.remove("hidden");
     try{ // retenir ce lien sur cet appareil : l'appli le rouvrira d'un bouton
@@ -968,6 +972,7 @@
     if(state.draw) state.draw.forEach(t => { if(!t.pid){ const p = state.people.find(q => full(q) === t.name); if(p){ t.pid = p.id; ch = true; } } });
     // tirage en cours : l'identité stable est le nom déjà utilisé dans les liens envoyés
     if(state.draw) state.people.forEach(p => { if(!p.kid && full(p) && state.draw.some(t => t.pid === p.id)){ p.kid = full(p); ch = true; } });
+    if(state.draw && !state.kbase){ const t = state.draw.find(x => x.token && decode(x.token)); if(t){ state.kbase = kbOf(decode(t.token)); ch = true; } }
     return ch; }
   function kidOf(name){ const p = state.people.find(q => full(q) === name); if(!p) return name;
     if(!p.kid){ let k = full(p); if(state.people.some(q => q !== p && q.kid === k)) k += " #" + p.id; p.kid = k; }
@@ -993,7 +998,7 @@
       state.draw.forEach(t => { if(!t.vid || !t.token) return;
         if(!(hist[t.vid] || (state.sent && state.sent[t.name]))) return;
         const h = hist[t.vid] = hist[t.vid] || {name:t.name, toks:[]}; h.name = t.name;
-        if(!h.toks.includes(t.token)) h.toks = h.toks.concat(t.token).slice(-10); });
+        if(!h.toks.includes(t.token)){ h.toks = h.toks.concat(t.token); if(h.toks.length > 10) h.toks = [h.toks[0]].concat(h.toks.slice(-9)); } }); // le premier lien envoyé est toujours gardé
       const curByName = {}; state.draw.forEach(t => { if(t.token) curByName[t.name] = t.token; });
       for(const vid of Object.keys(hist)){
         const h = hist[vid], target = curByName[h.name] || null;
@@ -1003,7 +1008,7 @@
         if(target){ const r = [];
           for(const old of h.toks){ if(old !== target) r.push({h:tokHash(old), c: await encFor(target, old)}); }
           texte = JSON.stringify({t:tokHash(target), r});
-          while(texte.length > 4900 && r.length > 1){ r.shift(); texte = JSON.stringify({t:tokHash(target), r}); } } // le serveur coupe à 5000 caractères
+          while(texte.length > 4900 && r.length > 1){ r.splice(r.length > 2 ? 1 : 0, 1); texte = JSON.stringify({t:tokHash(target), r}); } } // le serveur coupe à 5000 caractères
         pub[vid] = sig; out.push({k:verKey(vid), id:vid, texte});
       }
       if(out.length && !ssDeleted){
@@ -1069,10 +1074,9 @@
     guardFields();
   }
   // ---------- alerte avant de modifier un champ qui refait les liens pendant un tirage ----------
-  const GUARD_ALL = "Attention : un tirage est en cours.\n\nModifier ce champ refait TOUS les liens : il faudra les renvoyer à tout le monde, et les idées cadeaux, remerciements et photos déjà saisis ne seront plus retrouvés.\n\nModifier quand même ?";
   function guardFields(){
     const on = !!state.draw;
-    const els = [["group",GUARD_ALL],["dateFrom",GUARD_ALL],["dateTo",GUARD_ALL],["budget",GUARD_ALL]].map(([id,m]) => [$(id), m]); // prénom / nom : plus d'alerte (le tirage et les liens envoyés restent bons)
+    const els = []; // plus d'alerte : précision, date, montant, prénom, nom se corrigent sans toucher au tirage ni renvoyer les liens
     els.forEach(([el, msg]) => {
       if(!el) return;
       if(!el.dataset.guard){ el.dataset.guard = "1";
@@ -1104,6 +1108,7 @@
   function renamePerson(old, nw, p){
     const t = state.draw.find(x => p && p.id && x.pid === p.id) || state.draw.find(x => x.name === old); if(!t){ save(); return; }
     if(p && !p.kid) p.kid = old; // identité stable : celle des liens déjà envoyés
+    noteSent();
     const rc = recv(t), G = state.draw.find(x => x !== t && recv(x) === old);
     t.name = nw; if(rc !== null) t.token = tok(nw, rc, t.vid);
     if(G) G.token = tok(G.name, nw);
@@ -1154,9 +1159,12 @@
     const pin = pinOf(phoneOf(g)), age = ageOf(r);
     const gp = state.people.find(q => full(q) === g), first = gp ? (gp.name||"").trim() : "";
     const gk = kidOf(g), rk = kidOf(r), gkF = gk !== g ? gk : "", rkF = rk !== r ? rk : ""; // nom d'origine, seulement après une correction
-    if(pin) return encode(g, lock(r + "\u0001" + age + (rkF ? "\u0001" + rkF : ""), pin, g), state.budget, gkF, state.group, whenText(), "", vid, first);
-    return encode(g, r, state.budget, gkF + (rkF ? "\u0002" + rkF : ""), state.group, whenText(), age, vid, first);
+    if(pin) return encode(g, lock(r + "\u0001" + age + (rkF ? "\u0001" + rkF : ""), pin, g), state.budget, orgF(gkF, ""), state.group, whenText(), "", vid, first);
+    return encode(g, r, state.budget, orgF(gkF, rkF), state.group, whenText(), age, vid, first);
   }
+  function curKb(){ return state.group + "|" + whenText() + "|" + state.budget; }
+  function orgF(gkF, rkF){ const kb = state.kbase && state.kbase !== curKb() ? state.kbase.replace(/\|/g, "\u0003") : "";
+    return kb ? gkF + "\u0002" + rkF + "\u0002" + kb : rkF ? gkF + "\u0002" + rkF : gkF; }
   function recv(t){ // destinataire en clair (l'organisateur connaît les téléphones)
     const d = decode(t.token); if(!d) return null;
     if(!d.receiver.startsWith("~")) return d.receiver;
@@ -1181,14 +1189,21 @@
   function ssTitle(){ return "Secret Santa" + (state.group ? " " + state.group : ""); }
   function showGroup(){ $("groupTitle").textContent = state.group ? " " + state.group : ""; }
   $("group").value = state.group || ""; showGroup();
-  $("group").oninput = ()=>{ state.group = $("group").value.trim(); showGroup(); settingsChanged("La précision a changé"); };
+  $("group").oninput = ()=>{ state.group = $("group").value.trim(); showGroup(); if(!state.draw) settingsChanged("La précision a changé"); };
+  $("group").onchange = ()=>{ if(state.draw) settingsChanged("La précision a changé"); };
   $("budget").value = state.budget || "";
-  $("budget").oninput = ()=>{ state.budget = $("budget").value.trim(); settingsChanged("Le montant a changé"); };
+  $("budget").oninput = ()=>{ state.budget = $("budget").value.trim(); if(!state.draw) settingsChanged("Le montant a changé"); };
+  $("budget").onchange = ()=>{ if(state.draw) settingsChanged("Le montant a changé"); };
+  function noteSent(){ // liens déjà envoyés : retenus avant d'être refaits, pour que l'ancien lien ouvre la page à jour
+    const hist = state.hist = state.hist || {};
+    (state.draw || []).forEach(t => { if(!t.vid || !t.token || !(hist[t.vid] || state.sent[t.name])) return;
+      const h = hist[t.vid] = hist[t.vid] || {name:t.name, toks:[]}; if(!h.toks.includes(t.token)) h.toks = h.toks.concat(t.token); });
+  }
   function settingsChanged(what){
     if(state.draw){
+      noteSent();
       state.draw.forEach(t=>{ const r = recv(t); if(r !== null){ if(!t.vid) t.vid = newVid(); t.token = tok(t.name, r); } });
-      state.sent = {};
-      $("drawInfo").innerHTML = '<div class="err" style="display:block">' + what + ' : le tirage reste le même, mais renvoie les liens à tout le monde pour que ce soit pris en compte.</div>';
+      $("drawInfo").innerHTML = '<div class="ok">' + what + ' : le tirage est conservé. Rien à renvoyer : les liens déjà envoyés afficheront la modification.</div>';
       renderSend();
     }
     save();
@@ -1297,7 +1312,7 @@
     keepPrev();
     const res = doDraw(people);
     if(!res) return fail("Aucune combinaison possible avec ces exclusions.");
-    ensureIds();
+    ensureIds(); if(!state.draw || !state.kbase) state.kbase = curKb();
     state.draw = people.map((p,i)=>{ const vid = newVid(); return {name:p.name, pid:p.id, phone:p.phone, vid, token:tok(p.name, people[res[i]].name, vid)}; });
     state.seen = {}; state.recu = {};
     state.sent = {}; state.changed = {}; state.confirmed = {}; save();
@@ -1578,7 +1593,7 @@
 
   // ---------- sauvegarde / restauration ----------
   function backupCode(){
-    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo, seen:state.seen||{}, ssName:ssList.names[ssList.cur]||""}));
+    const bytes = new TextEncoder().encode(JSON.stringify({people:state.people, draw:state.draw, sent:state.sent, budget:state.budget, changed:state.changed, orgPhone:state.orgPhone, confirmed:state.confirmed, group:state.group, dateFrom:state.dateFrom, dateTo:state.dateTo, seen:state.seen||{}, kbase:state.kbase||"", ssName:ssList.names[ssList.cur]||""}));
     let bin = ""; bytes.forEach((b,i)=> bin += String.fromCharCode(b ^ KEY.charCodeAt(i % KEY.length) ^ ((i*37)&255)));
     return "SS1:" + btoa(bin);
   }
@@ -1625,7 +1640,7 @@
         r = txt.split("\u0001")[0];
       }
       if(!names.has(r) || r === d.giver) continue;
-      got[d.giver] = {receiver:r, token:tk, vid:d.vid};
+      got[d.giver] = {receiver:r, token:tk, vid:d.vid}; state.kbase = kbOf(d);
       { const gk = (d.org || "").split("\u0002")[0]; const pp = gk && state.people.find(q => full(q) === d.giver); if(pp) pp.kid = gk; } // nom d'origine après une correction
     }
     const givers = Object.keys(got);
@@ -1690,7 +1705,7 @@
       location.reload(); return;
     }
     if(d.ssName){ ssList.names[ssList.cur] = d.ssName; saveList(); renderList(); }
-    state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup();
+    state.kbase = d.kbase || ""; state.people = d.people; state.draw = d.draw || null; state.sent = d.sent || {}; state.budget = d.budget || ""; state.changed = d.changed || {}; state.orgPhone = d.orgPhone || ""; state.confirmed = d.confirmed || {}; state.group = d.group || ""; $("group").value = state.group; showGroup();
     state.seen = d.seen || {};
     state.dateFrom = d.dateFrom || ""; state.dateTo = d.dateTo || ""; $("dateFrom").value = state.dateFrom; $("dateTo").value = state.dateTo; showWhen(); $("budget").value = state.budget; save();
     renderRows(); renderSend(); renderSave(); $("restoreText").value = "";
@@ -1818,7 +1833,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.56"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.57"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
