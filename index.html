@@ -1122,7 +1122,7 @@
     const fam = {}; state.people.forEach(q => { const f = (q.family||"").trim().toLowerCase(); fam[full(q)] = f ? "f:" + f : "solo:" + full(q); });
     const bad = state.draw.filter(t => { const r = recv(t); return r && fam[t.name] === fam[r]; }).map(t => t.name);
     $("drawInfo").innerHTML = bad.length
-      ? '<div class="err" style="display:block">Groupe modifié, le tirage est conservé. Attention : avec ce changement, ' + bad.map(esc).join(", ") + ' offre à quelqu\'un du même groupe. Utilise Retirer / Ajouter un retardataire, ou relance le tirage si tu veux en tenir compte.</div>'
+      ? '<div class="err" style="display:block">Groupe modifié, le tirage est conservé. Attention : avec ce changement, ' + (bad.length === 1 ? '1 personne offre' : bad.length + ' personnes offrent') + ' à quelqu\'un du même groupe. Utilise Retirer / Ajouter un retardataire, ou relance le tirage si tu veux en tenir compte.</div>'
       : '<div class="ok">✅ Groupe modifié, le tirage est conservé et reste valable.</div>';
     showSendInfo();
   }
@@ -1833,7 +1833,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.57"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.58"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
