@@ -229,9 +229,9 @@
       <h3>✅ Envoyé</h3>
       <p>La case <b>envoyé</b> se coche quand tu envoies le message (tu peux aussi la cocher toi-même). Tu vois ainsi d'un coup d'œil où tu en es.</p>
       <h3>🚪 Désistement</h3>
-      <p>Si quelqu'un ne participe plus, appuie sur <b>Retirer</b> à côté de son nom. L'appli redonne une personne à celui qui devait lui offrir un cadeau, sans refaire tout le tirage. Les personnes concernées apparaissent en jaune avec « à prévenir » : renvoie-leur leur nouveau lien, le message « changement » est déjà prêt.</p>
+      <p>Si quelqu'un ne participe plus, appuie sur <b>Retirer</b> à côté de son nom. L'appli redonne une personne à celui qui devait lui offrir un cadeau, sans refaire tout le tirage. Rien à renvoyer : les liens déjà envoyés ouvrent la page à jour. Le bouton <b>Prévenir tout le monde</b> envoie un seul message à tous, sans dire qui est concerné.</p>
       <h3>➕ Retardataire</h3>
-      <p>Quelqu'un arrive après le tirage&nbsp;? Dans l'étape 3, appuie sur <b>Ajouter un retardataire</b>, remplis ses informations puis <b>Ajouter au tirage</b>. Pas besoin de tout refaire&nbsp;: une seule personne change de destinataire. Elle apparaît en jaune avec « à prévenir », et le nouveau venu apparaît dans la liste&nbsp;: envoie-leur leur lien.</p>
+      <p>Quelqu'un arrive après le tirage&nbsp;? Dans l'étape 3, appuie sur <b>Ajouter un retardataire</b>, remplis ses informations puis <b>Ajouter au tirage</b>. Pas besoin de tout refaire&nbsp;: une seule personne change de destinataire. Son lien déjà envoyé ouvre la page à jour, sans rien renvoyer&nbsp;; le bouton <b>Prévenir tout le monde</b> envoie un seul message à tous, sans dire qui est concerné. Envoie son lien au nouveau venu.</p>
       <h3>🎄 Plusieurs Secret Santa</h3>
       <p>En haut de la page, <b>Mes Secret Santa</b> permet d'en gérer plusieurs en même temps (famille, travail, amis…). <b>+ Nouveau</b> en crée un vide (tu lui donnes un nom), <b>Renommer</b> change le nom de celui qui est affiché, le menu permet de passer de l'un à l'autre, et <b>Supprimer</b> efface celui qui est affiché. Chacun garde ses participants, son tirage et ses envois.</p>
       <h3>🛟 Récupérer un tirage</h3>
@@ -728,10 +728,12 @@
     closedP.then(c => { if(c === "supprime") showClosed(); else if(c === "remplace") showReplaced();
       else if(c.startsWith("nouveau:")){ // ancien lien : on ouvre la page à jour
         try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok))); }catch(e){}
+        try{ sessionStorage.setItem("secretSanta.majLien", "1"); }catch(e){}
         location.replace("#" + c.slice(8)); location.reload(); } });
     let opening = false;
     let readyAt = 0;
-    const ready = ()=>{ readyAt = Date.now(); $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
+    const ready = ()=>{ readyAt = Date.now(); $("target").textContent = d.receiver;
+      try{ if(sessionStorage.getItem("secretSanta.majLien")){ sessionStorage.removeItem("secretSanta.majLien"); const n = document.createElement("p"); n.style.cssText = "font-size:13px;margin:6px 0 0"; n.textContent = "🔄 Le tirage a été mis à jour par l'organisateur : voici ta personne à jour."; $("target").after(n); } }catch(e){} $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
     if(d.receiver.startsWith("~")){ // lien protégé : il faut les 4 derniers chiffres du téléphone
       $("gift").classList.add("hidden"); $("tap").classList.add("hidden"); $("pinBox").classList.remove("hidden");
       const lockField = d.receiver;
@@ -1226,13 +1228,13 @@
       if(!A) return "Impossible de réattribuer sans refaire un tirage complet.";
       changes[G.name] = tgt(A); changes[A.name] = R;
     }
+    noteSent(); // les liens déjà envoyés ouvriront la page à jour : rien à renvoyer, et aucun nom à montrer
     state.draw = D.filter(t => t !== X);
-    state.draw.forEach(t => { if(changes[t.name]){ if(!t.vid) t.vid = newVid(); t.token = tok(t.name, changes[t.name]); state.changed[t.name] = true; state.sent[t.name] = false; delete state.confirmed[t.name]; } });
+    state.draw.forEach(t => { if(changes[t.name]){ if(!t.vid) t.vid = newVid(); t.token = tok(t.name, changes[t.name]); delete state.confirmed[t.name]; } });
     delete state.sent[name]; delete state.changed[name]; delete state.confirmed[name];
     state.people = state.people.filter(p => full(p) !== name);
     save(); renderRows();
-    const who = Object.keys(changes);
-    $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(name) + ' a été retiré(e). ' + (who.length === 1 ? '1 personne doit' : who.length + ' personnes doivent') + ' recevoir un nouveau lien : ' + who.map(esc).join(" et ") + ' (en jaune ci-dessous).</div>';
+    $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(name) + ' a été retiré(e). Le tirage est mis à jour. Rien à renvoyer : les liens déjà envoyés ouvrent la page à jour.' + warnAll("un désistement") + '</div>';
     renderSend();
     return null;
   }
@@ -1251,12 +1253,18 @@
     if(!G){ state.people.pop(); return "Impossible d'ajouter cette personne sans refaire un tirage complet (vérifie son groupe)."; }
     const R = tgt(G);
     if(!G.vid) G.vid = newVid();
-    G.token = tok(G.name, N); state.changed[G.name] = "ajout"; state.sent[G.name] = false; delete state.confirmed[G.name];
+    noteSent(); // le lien déjà envoyé ouvrira la page à jour : rien à renvoyer, et aucun nom à montrer
+    G.token = tok(G.name, N); delete state.confirmed[G.name];
     const vid = newVid();
     state.draw.push({name:N, pid:p.id, phone:(p.phone||"").trim(), vid, token:tok(N, R, vid)});
     save(); renderRows(); renderSend();
-    $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(N) + ' a été ajouté(e) au tirage. 2 personnes doivent recevoir un lien : ' + esc(N) + ' et ' + esc(G.name) + ' (en jaune ci-dessous, son destinataire a changé).</div>';
+    $("drawInfo").innerHTML = '<div class="ok">✅ ' + esc(N) + ' a été ajouté(e) au tirage. Envoie son lien à ' + esc(N) + '. Pour les autres, rien à renvoyer : les liens déjà envoyés ouvrent la page à jour.' + warnAll("l'arrivée d'un nouveau participant") + '</div>';
     return null;
+  }
+  // un seul message pour tout le monde (WhatsApp : tu choisis le groupe ou les contacts) : personne ne sait qui est concerné
+  function warnAll(why){
+    const txt = "🎅 " + ssTitle() + " :\n\nSuite à " + why + ", le tirage a été mis à jour. Rouvrez votre lien Secret Santa pour vérifier à qui vous offrez votre cadeau.";
+    return '<br><a class="btn" style="display:inline-block;margin-top:8px" target="_blank" rel="noopener" href="https://api.whatsapp.com/send?text=' + encodeURIComponent(txt) + '">📣 Prévenir tout le monde</a>';
   }
   $("toggleLate").onclick = ()=> $("late").classList.toggle("hidden");
   $("lateAdd").onclick = ()=>{
@@ -1833,7 +1841,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.58"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.59"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
