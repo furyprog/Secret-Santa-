@@ -1218,7 +1218,7 @@
         ? "🎅 " + ssTitle() + " : changement !\n\nBonjour,\n" + first + ", suite " + (ch === "ajout" ? "à l'arrivée d'un nouveau participant" : "à un désistement") + ", la personne à qui tu offres ton cadeau a changé. Ton ancien lien n'est plus valable : ouvre celui-ci pour découvrir ta nouvelle personne. Garde le secret 🤫\n" + bud + "\n" + url
         : "🎅 " + ssTitle() + " !\n\nBonjour,\n" + first + ", ouvre ce lien pour découvrir à qui tu dois offrir ton cadeau. Garde le secret 🤫\n" + bud + "\n" + url;
       const num = waNumber(t.phone);
-      const wa = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+      const wa = "https://api.whatsapp.com/send?phone=" + num + "&text=" + encodeURIComponent(msg);
       const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
       const sms = "sms:" + (num ? "+" + num : "") + (ios ? "&" : "?") + "body=" + encodeURIComponent(msg);
       return {msg, wa, num, ch, sms};
@@ -1254,7 +1254,7 @@
       : "🎄 La remise des cadeaux a commencé (" + w + "), pensez à votre cadeau ! 🎁";
     return "🎅 " + ssTitle() + " :\n\n" + line;
   }
-  $("remindWa").onclick = ()=>{ const m = remindText(); if(!m) return false; $("remindWa").href = "https://wa.me/?text=" + encodeURIComponent(m); };
+  $("remindWa").onclick = ()=>{ const m = remindText(); if(!m) return false; $("remindWa").href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(m); };
   // ---------- relances : lien pas encore ouvert / aucune idée cadeau saisie (rien n'est révélé) ----------
   let wishState = {}; // nom -> true si la personne a saisi au moins une idée
   function relMsg(t, kind){
@@ -1278,7 +1278,7 @@
       if(!list.length){ b.classList.add("hidden"); continue; }
       const t = list[0]; b.classList.remove("hidden");
       b.textContent = (kind === "lien" ? "🔔 Relancer " : "📝 Rappeler ") + t.name;
-      b.href = "https://wa.me/" + waNumber(t.phone) + "?text=" + encodeURIComponent(relMsg(t, kind));
+      b.href = "https://api.whatsapp.com/send?phone=" + waNumber(t.phone) + "&text=" + encodeURIComponent(relMsg(t, kind));
       b.onclick = ()=>{ state.relance = state.relance || {}; state.relance[kind] = state.relance[kind] || {}; state.relance[kind][t.name] = new Date().toISOString(); save(); setTimeout(renderRel, 300); };
     }
   }
@@ -1310,7 +1310,7 @@
     if(!open) $("giftList").innerHTML = "";
     const rm = remindText(); $("remindWa").classList.toggle("hidden", !rm);
     // un seul message pour tout le monde (WhatsApp : tu choisis le groupe ou les contacts), sans rien révéler
-    $("thanksWa").href = "https://wa.me/?text=" + encodeURIComponent("🎅 " + ssTitle() + " :\n\n💌 Vous avez peut-être reçu un mot de remerciement ! Rouvrez votre lien Secret Santa pour le découvrir.");
+    $("thanksWa").href = "https://api.whatsapp.com/send?text=" + encodeURIComponent("🎅 " + ssTitle() + " :\n\n💌 Vous avez peut-être reçu un mot de remerciement ! Rouvrez votre lien Secret Santa pour le découvrir.");
   }
   $("giftShow").onclick = ()=>{
     if(!giftOpen()) return;
@@ -1455,7 +1455,7 @@
     $("saveBox").classList.toggle("hidden", !has); $("noSave").classList.toggle("hidden", has);
     if(has){
       const msg = "🎅 Sauvegarde " + ssTitle() + " (ne pas modifier) :\n\n" + backupCode() + "\n\nPour restaurer : " + location.href.split("#")[0];
-      $("saveWa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
+      $("saveWa").href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(msg);
     }
   }
   $("saveCopy").onclick = async (e)=>{
@@ -1676,7 +1676,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.36"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.37"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
