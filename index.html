@@ -1471,7 +1471,7 @@
     const sel = $("ssSelect"); sel.innerHTML = "";
     ssList.ids.forEach((id,i)=>{ const o = document.createElement("option"); o.value = id; o.textContent = ssLabel(id, i); o.selected = id === ssList.cur; sel.appendChild(o); });
   }
-  $("ssSelect").onchange = ()=>{ save(); ssList.cur = $("ssSelect").value; saveList(); location.reload(); };
+  $("ssSelect").onchange = ()=>{ const id = $("ssSelect").value; save(); ssList.cur = id; saveList(); location.reload(); }; // lire le choix avant save() : save() reconstruit le menu
   function nameOwner(name, exceptId){ const n = name.trim().toLowerCase(); return ssList.ids.find(id => id !== exceptId && (ssList.names[id]||"").trim().toLowerCase() === n) || null; }
   function uniqueName(name){ let k = 2; while(nameOwner(name + " (" + k + ")")) k++; return name + " (" + k + ")"; }
   let nameMode = "";
@@ -1571,7 +1571,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.29"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.30"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
