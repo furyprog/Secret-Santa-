@@ -483,6 +483,18 @@
   function photoKey(name, d){ const base = "photo|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
     return "p" + h32(base).toString(36).padStart(7,"0") + h32("SP2|" + base).toString(36).padStart(7,"0"); }
   // Secret Santa supprimé : marque rangée sous un code calculé à partir du code anonyme du lien
+  function verKey(vid){ return "v" + h32("vers|" + vid).toString(36).padStart(7,"0") + h32("SV2|" + vid).toString(36).padStart(7,"0"); }
+  function tokHash(t){ return h32("T|" + t).toString(36).padStart(7,"0") + h32("T2|" + t).toString(36).padStart(7,"0"); }
+  let flushingV = false;
+  function flushVersions(){ // envoi au serveur, réessayé plus tard si pas d'internet
+    if(flushingV) return; let q = []; try{ q = JSON.parse(localStorage.getItem("secretSanta.aPublier") || "[]"); }catch(e){}
+    if(!q.length) return; flushingV = true;
+    Promise.all(q.map(x => fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(x)}).then(r => r.ok).catch(()=>false))).then(ok => {
+      let now = []; try{ now = JSON.parse(localStorage.getItem("secretSanta.aPublier") || "[]"); }catch(e){}
+      now = now.filter(x => !q.some((y, i) => ok[i] && y.k === x.k && y.texte === x.texte));
+      try{ if(now.length) localStorage.setItem("secretSanta.aPublier", JSON.stringify(now)); else localStorage.removeItem("secretSanta.aPublier"); }catch(e){}
+      flushingV = false; });
+  }
   function closedKey(vid){ return "x" + h32("suppr|" + vid).toString(36).padStart(7,"0") + h32("SX2|" + vid).toString(36).padStart(7,"0"); }
   function pinOf(phone){ const d = String(phone||"").replace(/\D/g,""); return d.length >= 4 ? d.slice(-4) : ""; }
   function h32(str){ let h = 2166136261; for(const c of new TextEncoder().encode(str)){ h ^= c; h = Math.imul(h, 16777619) >>> 0; } return h; }
@@ -613,8 +625,16 @@
       $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Ce Secret Santa a été supprimé par l\'organisateur : ce lien n\'est plus valable.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
       $("reveal").querySelector(".appVersion").textContent = ver;
     };
-    const closedP = d.vid ? fetch(API + "/souhaits?k=" + closedKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => j && j.texte === "supprime").catch(()=>false) : Promise.resolve(false);
-    closedP.then(c => { if(c) showClosed(); });
+    const closedP0 = d.vid ? fetch(API + "/souhaits?k=" + closedKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => j && j.texte === "supprime").catch(()=>false) : Promise.resolve(false);
+    // lien remplacé par un plus récent (tirage modifié) : on ne montre pas l'ancien résultat
+    const showReplaced = ()=>{
+      const ver = ($("reveal").querySelector(".appVersion") || {}).textContent || "";
+      $("reveal").querySelector(".box").innerHTML = '<h1>🎅 Secret Santa</h1><p style="font-size:18px;font-weight:600">Le tirage a été modifié : ce lien n\'est plus valable. Ouvre le dernier lien que tu as reçu.</p><p style="margin-top:40px;font-size:12px;opacity:.7">Appli réalisée par Th.Roussel<br><span class="appVersion"></span></p>';
+      $("reveal").querySelector(".appVersion").textContent = ver;
+    };
+    const verP = d.vid ? fetch(API + "/souhaits?k=" + verKey(d.vid), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => !!(j && j.texte && (j.texte === "remplace" || (j.texte.startsWith("t:") && j.texte !== "t:" + tokHash(tok))))).catch(()=>false) : Promise.resolve(false);
+    const closedP = Promise.all([closedP0, verP]).then(([c, v]) => c ? "supprime" : v ? "remplace" : "");
+    closedP.then(c => { if(c === "supprime") showClosed(); else if(c === "remplace") showReplaced(); });
     let opening = false;
     let readyAt = 0;
     const ready = ()=>{ readyAt = Date.now(); $("target").textContent = d.receiver; $("gift").classList.remove("hidden"); $("tap").classList.remove("hidden"); $("pinBox").classList.add("hidden"); };
@@ -633,7 +653,7 @@
     } else ready();
     const open = ()=>{ if(opening || Date.now() - readyAt < 700) return; // ignore un double appui sur OK qui tomberait sur le cadeau
       opening = true; $("tap").classList.add("hidden");
-      closedP.then(c => { if(c) return showClosed();
+      closedP.then(c => { if(c === "supprime") return showClosed(); if(c === "remplace") return showReplaced();
         jingle(); $("gift").classList.add("opening");
         setTimeout(confetti, 1000);
         setTimeout(reveal, 1350); }); };
@@ -813,7 +833,26 @@
   { let pd = null; try{ pd = JSON.parse(localStorage.getItem(LS + ".precedent")); }catch(e){}
     const a1 = rememberVids(state.draw), a2 = rememberVids(pd && pd.draw);
     if(a1 || a2){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} } }
-  const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); };
+  const save = ()=>{ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} if(onSave) onSave(); publishVersions(); };
+  // tirage modifié (ajout, retrait, nouveau tirage…) : le serveur garde, pour chaque code de lien, une empreinte du lien valable.
+  // Un ancien lien voit que ce n'est plus lui et l'indique au lieu d'afficher l'ancien résultat. Aucun nom n'est envoyé.
+  function publishVersions(){
+    if(!state.draw) return;
+    if(!state.pub){ // première fois : les liens des tirages d'avant ne sont pas touchés sans accord
+      state.pub = {}; const cur0 = new Set(state.draw.map(t => t.vid)); (state.allVids || []).forEach(v => { if(!cur0.has(v)) state.pub[v] = "ancien"; }); }
+    const pub = state.pub, out = [];
+    const anySent = state.draw.some(t => state.sent && state.sent[t.name]);
+    state.draw.forEach(t => { if(!t.vid || !t.token) return; const want = "t:" + tokHash(t.token);
+      if((pub[t.vid] || (state.sent && state.sent[t.name])) && pub[t.vid] !== want){ pub[t.vid] = want; out.push({k:verKey(t.vid), id:t.vid, texte:want}); } });
+    if(anySent){ const cur = new Set(state.draw.map(t => t.vid));
+      (state.allVids || []).forEach(v => { if(!cur.has(v) && pub[v] !== "remplace" && pub[v] !== "ancien"){ pub[v] = "remplace"; out.push({k:verKey(v), id:v, texte:"remplace"}); } }); }
+    if(!out.length) return;
+    try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+    let q = []; try{ q = JSON.parse(localStorage.getItem("secretSanta.aPublier") || "[]"); }catch(e){}
+    q = q.filter(x => !out.some(o => o.k === x.k)).concat(out);
+    try{ localStorage.setItem("secretSanta.aPublier", JSON.stringify(q)); }catch(e){}
+    flushVersions();
+  }
 
   function renderRows(){
     const box = $("rows"); box.innerHTML = "";
@@ -1541,6 +1580,8 @@
     return closing;
   }
   flushClosed(); window.addEventListener("online", ()=> flushClosed());
+  publishVersions(); window.addEventListener("online", ()=> flushVersions());
+  setInterval(flushVersions, 60000);
   setInterval(()=>{ if(toClose().length) flushClosed(); }, 60000);
   let delArm = false;
   $("ssDel").onclick = async ()=>{
@@ -1601,7 +1642,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.34"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.35"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
