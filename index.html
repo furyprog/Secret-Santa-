@@ -44,8 +44,10 @@
   .ghost{background:transparent;border:1px solid var(--line)!important;color:var(--ink)}
   .wa{background:#25d366;color:#fff}
   .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-  .err{background:#fde8e8;color:var(--red-d);border-radius:9px;padding:10px;margin-top:10px;font-size:14px;display:none}
-  .ok{background:var(--green-l);color:var(--green);border-radius:9px;padding:10px;margin-top:10px;font-size:14px}
+  .err{background:#fde8e8;color:var(--red-d);border-radius:9px;padding:10px;margin-top:10px;font-size:13px;display:none}
+  .ok{background:var(--green-l);color:var(--green);border-radius:9px;padding:10px;margin-top:10px;font-size:13px}
+  small{font-size:13px} /* commentaires : tous à 13 px, comme « Coche cette case quand tu as reçu ton cadeau » */
+  .cmt,#gotMsg,#boughtMsg,#myThanksMsg,#myWishMsg,#myPhotoMsg,#pinErr,#homeHow{font-size:13px}
   .send{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
   .send:first-child{border-top:none}
   .send .who{flex:1;min-width:120px}
@@ -782,7 +784,7 @@
       const hisKey = wishKey(d.receiver, d);
       const loadHis = ()=> fetch(API + "/souhaits?k=" + hisKey, {cache:"no-store"}).then(r => r.ok ? r.json() : Promise.reject()).then(j => {
         const items = parse(j.texte), box = $("hisWishTxt"); box.innerHTML = "";
-        if(!items.length) box.append("Pas encore d'idée pour le moment.", document.createElement("br"), "Elles s'afficheront ici dès qu'elle en aura écrit.");
+        if(!items.length){ const c = document.createElement("span"); c.className = "cmt"; c.append("Pas encore d'idée pour le moment.", document.createElement("br"), "Elles s'afficheront ici dès qu'elle en aura écrit."); box.append(c); }
         else { const ul = document.createElement("ul"); ul.className = "hisList";
           items.forEach(it => { const li = document.createElement("li"); li.textContent = it.t;
             const u = fixUrl(it.u);
@@ -1782,7 +1784,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.46"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.47"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
