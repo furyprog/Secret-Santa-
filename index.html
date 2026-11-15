@@ -389,6 +389,11 @@
     <p id="tap">Touche le cadeau pour découvrir le nom</p>
     <div class="name hidden" id="target"></div>
     <div id="hisWish" class="wishBox hidden"><b>🎁 Ses idées cadeaux</b><div id="hisWishTxt" style="margin-top:6px"></div></div>
+    <div id="boughtBox" class="wishBox hidden">
+      <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-weight:600;font-size:17px;color:#ffe7a8;margin:0"><input type="checkbox" id="boughtChk" style="width:22px;height:22px;flex:none"> 🛍️ J'ai acheté ton cadeau</label>
+      <p style="font-size:13px;margin:6px 0 0">Coche cette case quand tu as acheté le cadeau : <span id="boughtName"></span> le verra sur sa page, sans savoir qui tu es.</p>
+      <p id="boughtMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
+    </div>
     <div id="hisThanks" class="wishBox hidden"><b>💌 Un message de <span id="hisThanksName"></span> pour toi</b><div id="hisThanksTxt" style="white-space:pre-line;margin-top:6px"></div><img id="hisPhoto" class="hidden" alt="" style="display:block;max-width:100%;border-radius:10px;margin-top:10px"></div>
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
@@ -400,6 +405,7 @@
       <p style="font-size:13px;margin:6px 0 0">Coche cette case quand tu as reçu ton cadeau : l'organisateur saura qu'il a bien été offert.</p>
       <p id="gotMsg" style="font-weight:600;min-height:1.2em;margin:6px 0 0"></p>
     </div>
+    <div id="boughtForMe" class="wishBox hidden" style="margin-top:26px"><b>🛍️ Ton Secret Santa a acheté ton cadeau !</b></div>
     <div id="myThanks" class="wishBox hidden" style="margin-top:26px">
       <b>💌 Merci pour mon cadeau</b>
       <textarea id="myThanksTxt" maxlength="1000" rows="3" placeholder="Ex. : Merci beaucoup, il me plaît énormément !"></textarea>
@@ -480,6 +486,11 @@
   // petit mot de remerciement : même principe, autre code (le destinataire écrit, celui qui offre lit)
   function thanksKey(name, d){ const base = "merci|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
     return "m" + h32(base).toString(36).padStart(7,"0") + h32("SM2|" + base).toString(36).padStart(7,"0"); }
+  // « J'ai acheté ton cadeau » : rangé sous un code calculé à partir du nom de celui qui reçoit (aucun nom envoyé)
+  function boughtKey(name, d){ const base = "achat|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+    return "a" + h32(base).toString(36).padStart(7,"0") + h32("SA2|" + base).toString(36).padStart(7,"0"); }
+  function boughtId(name, d){ const base = "achatid|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
+    return "b" + h32(base).toString(36).padStart(7,"0") + h32("SB2|" + base).toString(36).padStart(7,"0"); }
   function photoKey(name, d){ const base = "photo|" + name + "|" + d.group + "|" + d.when + "|" + d.budget;
     return "p" + h32(base).toString(36).padStart(7,"0") + h32("SP2|" + base).toString(36).padStart(7,"0"); }
   // Secret Santa supprimé : marque rangée sous un code calculé à partir du code anonyme du lien
@@ -732,7 +743,27 @@
         if(img){ $("hisPhoto").src = img; $("hisPhoto").classList.remove("hidden"); } else $("hisPhoto").classList.add("hidden");
         $("hisThanks").classList.toggle("hidden", !t && !img);
       });
-      loadHis(); loadThanks(); setInterval(()=>{ loadHis(); loadThanks(); }, 60000);
+      // « J'ai acheté ton cadeau » : coché par celui qui offre, vu par celui qui reçoit
+      const bKey = boughtKey(d.receiver, d), bId = boughtId(d.receiver, d);
+      if(d.vid){
+        $("boughtName").textContent = d.receiver; $("boughtBox").classList.remove("hidden");
+        fetch(API + "/souhaits?k=" + bKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
+          const t = (j && j.texte) || "";
+          if(t === d.vid) $("boughtChk").checked = true;
+          else if(t) fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:bKey, id:bId, texte:""})}).catch(()=>{}); // coché par un ancien Secret Santa (tirage modifié) : effacé
+        }).catch(()=>{});
+        $("boughtChk").onchange = ()=>{
+          const v = $("boughtChk").checked; $("boughtMsg").textContent = "Enregistrement…";
+          fetch(API + "/souhaits", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({k:bKey, id:bId, texte: v ? d.vid : ""})})
+            .then(r => { if(!r.ok) throw 0; $("boughtMsg").textContent = "✅ C'est noté."; })
+            .catch(()=>{ $("boughtChk").checked = !v; $("boughtMsg").textContent = "⚠️ Enregistrement impossible pour le moment. Réessaie plus tard."; });
+        };
+      }
+      const myBKey = boughtKey(d.giver, d);
+      const loadBought = ()=> fetch(API + "/souhaits?k=" + myBKey, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => {
+        $("boughtForMe").classList.toggle("hidden", !(j && j.texte) || $("gotChk").checked); }).catch(()=>{});
+      $("gotChk").addEventListener("change", loadBought);
+      loadHis(); loadThanks(); loadBought(); setInterval(()=>{ loadHis(); loadThanks(); loadBought(); }, 60000);
       document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ loadHis(); loadThanks(); } });
       // mes propres idées (seulement si le lien a un code anonyme)
       if(!d.vid) return;
@@ -745,7 +776,7 @@
       function syncThanks(){ const got = !$("gotBox").classList.contains("hidden") && $("gotChk").checked;
         $("myThanks").classList.toggle("hidden", !got); $("myWish").classList.toggle("hidden", got); }
       if(!showGot()){ const gt = setInterval(()=>{ if(showGot()) clearInterval(gt); }, 60000); }
-      fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; syncThanks(); }).catch(()=>{});
+      fetch(API + "/recus?ids=" + d.vid, {cache:"no-store"}).then(r => r.ok ? r.json() : null).then(j => { if(j && j[d.vid]) $("gotChk").checked = true; syncThanks(); loadBought(); }).catch(()=>{});
       $("gotChk").onchange = ()=>{
         const v = $("gotChk").checked; $("gotMsg").textContent = "Enregistrement…"; syncThanks();
         fetch(API + "/recu", {method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({id:d.vid, recu:v})})
@@ -1676,7 +1707,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.38"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.39"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
