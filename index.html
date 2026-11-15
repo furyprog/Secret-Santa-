@@ -86,8 +86,11 @@
   @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
   .reveal p{opacity:.92}
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%} /* le téléphone ne grossit plus certains textes tout seul : mêmes tailles partout */
-  @media (max-width:600px){ /* page cadeau sur smartphone : plus compacte en hauteur (pas les pages « supprimé » / « plus valable », qui restent centrées) */
-    .reveal:not(.msgOnly){padding:8px 12px}
+  @media (max-width:600px){ /* page cadeau sur smartphone : plus compacte, contenu réparti dans la hauteur, bouton et version en bas (pas les pages « supprimé » / « plus valable », qui restent centrées) */
+    .reveal:not(.msgOnly){padding:8px 12px;align-items:stretch}
+    .reveal:not(.msgOnly) .box{display:flex;flex-direction:column;min-height:calc(100vh - 16px);min-height:calc(100dvh - 16px);width:100%;margin:0 auto}
+    .reveal:not(.msgOnly) #revMain{margin:auto 0;display:flex;flex-direction:column;justify-content:space-evenly;flex:1}
+    .reveal:not(.msgOnly) #revFoot{margin-top:12px !important}
     .reveal:not(.msgOnly) h1{font-size:28px;margin:4px 0;line-height:1.15}
     .reveal:not(.msgOnly) p{margin:6px 0}
     .reveal:not(.msgOnly) .name{font-size:38px;margin:2px 0}
@@ -96,8 +99,7 @@
     .reveal:not(.msgOnly) .wishBox p:empty{display:none}
     .reveal:not(.msgOnly) .wishBox p{margin:4px 0 0 !important}
     .reveal:not(.msgOnly) #calLine{margin:2px 0 6px !important}
-    .reveal:not(.msgOnly) .box > div[style*="margin-top:30px"]{margin-top:12px !important}
-    .reveal:not(.msgOnly) .box > p[style*="margin-top:40px"]{margin-top:16px !important}
+    .reveal:not(.msgOnly) .box > p[style*="margin-top:40px"]{margin-top:10px !important}
   }
   .wishBox{background:rgba(255,255,255,.12);border:1px solid rgba(255,231,168,.5);border-radius:12px;padding:12px 14px;margin:12px 0;text-align:left;font-size:16px}
   .wishBox b{color:#ffe7a8}
@@ -394,6 +396,7 @@
   </dialog>
   <div class="snow" id="snow"></div>
   <div class="box">
+    <div id="revMain">
     <p id="groupLine" class="hidden" style="font-family:Fraunces,serif;font-size:20px;font-weight:600;color:#ffe7a8;margin:0"></p>
     <h1 id="hello" style="white-space:pre-line">🎅 Secret Santa</h1>
     <p id="intro">Tu dois offrir un cadeau à…</p>
@@ -450,7 +453,8 @@
       <button class="btn" id="myWishSave" style="background:#f3cf6b;color:#5a1010">Enregistrer</button>
       <p id="myWishMsg" style="font-weight:600;min-height:1.2em;margin:8px 0 0"></p>
     </div>
-    <div style="margin-top:30px">
+    </div>
+    <div id="revFoot" style="margin-top:30px">
       <button class="btn hidden" id="homeBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8">📲 Garder mon lien sur l'écran d'accueil</button>
       <div id="homeHow" class="wishBox hidden"></div>
       <button class="btn" id="orgaBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin-top:10px">🎄 Organiser mon propre Secret Santa</button>
@@ -1778,7 +1782,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.45"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.46"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
