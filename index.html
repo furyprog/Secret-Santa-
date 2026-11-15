@@ -1096,7 +1096,7 @@
     for(const m of [state.sent, state.changed, state.confirmed || {}, wishState]){ if(old in m){ m[nw] = m[old]; delete m[old]; } }
     // les liens déjà envoyés restent bons : l'ancien lien ouvre la page corrigée (voir publishVersions), rien à renvoyer
     save(); renderSend(); renderList();
-    $("drawInfo").innerHTML = '<div class="ok">✏️ Nom corrigé, le tirage est conservé. Rien à renvoyer : les liens déjà envoyés à ' + esc(nw) + (G ? ' et ' + esc(G.name) : '') + ' ouvrent la page corrigée.</div>';
+    $("drawInfo").innerHTML = '<div class="ok">✏️ Nom corrigé, le tirage est conservé. Rien à renvoyer : les liens déjà envoyés ouvrent la page corrigée.</div>';
     showSendInfo();
   }
   function checkGroups(){
@@ -1807,7 +1807,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.51"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.52"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
