@@ -775,12 +775,20 @@
     return true;
   }
   if(showReveal()) return;
+  function forgetLinks(vids){ try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => { const d = decode(x.tok); return !(d && d.vid && vids.includes(d.vid)); }))); }catch(e){} }
   let mesLiens = []; try{ mesLiens = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => decode(x.tok)); }catch(e){}
   if(mesLiens.length){
     const orga = ssList.ids.some(id => { try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); return st && st.people && st.people.some(p => (p.name||"").trim()); }catch(e){ return false; } });
     if(!orga){ location.replace("#" + mesLiens[0].tok); location.reload(); return; } // simple participant : sa page s'ouvre directement
     $("myPages").innerHTML = mesLiens.map(x => '<a class="btn primary small" href="#' + x.tok + '">🎁 Ma page cadeau' + (x.group ? " (Secret Santa " + esc(x.group) + ")" : "") + (mesLiens.length > 1 ? " · " + esc(x.who) : "") + '</a>').join(" ");
     $("myPagesCard").classList.remove("hidden");
+    // Secret Santa supprimé par l'organisateur : on oublie son lien et on retire son bouton
+    mesLiens.forEach(x => { const v = decode(x.tok).vid; if(!v) return;
+      fetch(API + "/souhaits?k=" + closedKey(v), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => { if(!(j && j.texte === "supprime")) return;
+        forgetLinks([v]);
+        const a = [...$("myPages").querySelectorAll("a")].find(el => el.getAttribute("href") === "#" + x.tok); if(a) a.remove();
+        if(!$("myPages").querySelector("a")) $("myPagesCard").classList.add("hidden");
+      }).catch(()=>{}); });
   }
   window.addEventListener("hashchange", ()=>{ if(decode(location.hash.slice(1))) location.reload(); });
 
@@ -1531,6 +1539,7 @@
         try{ localStorage.setItem(CLOSE_LS, JSON.stringify(before)); }catch(e){} return; }
     }
     try{ localStorage.removeItem(LS); localStorage.removeItem(LS + ".precedent"); }catch(e){}
+    forgetLinks(vids); // le bouton « Ma page cadeau » de ce Secret Santa disparaît
     delete ssList.names[ssList.cur];
     if(ssList.ids.length < 2){ saveList(); location.reload(); return; } // c'était le seul : il est remplacé par un Secret Santa vide
     ssList.ids = ssList.ids.filter(x => x !== ssList.cur); ssList.cur = ssList.ids[0]; saveList(); location.reload();
@@ -1571,7 +1580,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.30"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.31"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   if(!("serviceWorker" in navigator)) return;
   let reloading = false;
