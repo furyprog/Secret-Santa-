@@ -89,9 +89,9 @@
   .reveal p{opacity:.92}
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%} /* le téléphone ne grossit plus certains textes tout seul : mêmes tailles partout */
   @media (max-width:600px){ /* page cadeau sur smartphone : plus compacte, contenu réparti dans la hauteur, bouton et version en bas (pas les pages « supprimé » / « plus valable », qui restent centrées) */
-    .reveal:not(.msgOnly){padding:8px 12px;align-items:stretch}
-    .reveal:not(.msgOnly) .box{display:flex;flex-direction:column;min-height:calc(100vh - 16px);min-height:calc(100dvh - 16px);width:100%;margin:0 auto}
-    .reveal:not(.msgOnly) #revMain{margin:auto 0;display:flex;flex-direction:column;justify-content:space-evenly;flex:1}
+    .reveal:not(.msgOnly){padding:8px 12px;flex-direction:column;align-items:stretch;justify-content:flex-start;box-sizing:border-box;min-height:calc(100vh - 13px);min-height:calc(100dvh - 13px)}
+    .reveal:not(.msgOnly) .box{flex:1;display:flex;flex-direction:column;width:100%;margin:0 auto}
+    .reveal:not(.msgOnly) #revMain{margin:auto 0;padding:8px 0} /* contenu groupé, centré dans la hauteur */
     .reveal:not(.msgOnly) #revFoot{margin-top:12px !important}
     .reveal:not(.msgOnly) h1{font-size:28px;margin:4px 0;line-height:1.15}
     .reveal:not(.msgOnly) p{margin:6px 0}
@@ -642,6 +642,11 @@
 
   // ---------- mode révélation ----------
   // lien d'un tirage fait sur cet appareil : renvoie le lien actuel de cette personne (null si ce tirage n'existe plus ici)
+  // codes de tous les liens créés sur cet appareil (même si le Secret Santa a été supprimé depuis)
+  function mesVids(){ try{ const a = JSON.parse(localStorage.getItem("secretSanta.mesVids") || "[]"); return Array.isArray(a) ? a : []; }catch(e){ return []; } }
+  function addMesVids(vs){ const cur = mesVids(), add = vs.filter(v => v && !cur.includes(v)); if(add.length){ try{ localStorage.setItem("secretSanta.mesVids", JSON.stringify(cur.concat(add))); }catch(e){} } }
+  for(const id of ssList.ids){ try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); const pd = JSON.parse(localStorage.getItem(keyOf(id) + ".precedent"));
+    addMesVids([...((st && st.allVids) || []), ...((st && st.draw) || []).map(t => t.vid), ...((pd && pd.draw) || []).map(t => t.vid)]); }catch(e){} }
   function ownTok(vid){
     for(const id of ssList.ids){ try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); const t = st && st.draw && st.draw.find(x => x.vid === vid && x.token); if(t) return t.token; }catch(e){} }
     return null;
@@ -654,7 +659,7 @@
     $("reveal").classList.remove("hidden");
     try{ // retenir ce lien sur cet appareil : l'appli le rouvrira d'un bouton
       const L = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => x.tok !== tok);
-      L.unshift({tok, who:(d.first || d.giver), group:d.group || "", own: !!(d.vid && ownTok(d.vid))}); localStorage.setItem("secretSanta.mesLiens", JSON.stringify(L.slice(0, 5)));
+      L.unshift({tok, who:(d.first || d.giver), group:d.group || "", own: !!(d.vid && (ownTok(d.vid) || mesVids().includes(d.vid))), v:2}); localStorage.setItem("secretSanta.mesLiens", JSON.stringify(L.slice(0, 5)));
     }catch(e){}
     // raccourci sur l'écran d'accueil : installation directe si le navigateur le permet, sinon explication
     let installEvt = null;
@@ -915,12 +920,12 @@
   let mesLiens = []; try{ mesLiens = JSON.parse(localStorage.getItem("secretSanta.mesLiens") || "[]").filter(x => decode(x.tok)); }catch(e){}
   if(mesLiens.length){
     const orga = ssList.ids.some(id => { try{ const st = JSON.parse(localStorage.getItem(keyOf(id))); return st && st.people && st.people.some(p => (p.name||"").trim()); }catch(e){ return false; } });
-    if(!orga && mesLiens.some(x => x.own === undefined)){ // téléphone de participant : ses liens viennent d'un autre organisateur, on les garde même s'il organise ensuite
-      mesLiens.forEach(x => { if(x.own === undefined) x.own = false; }); try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(mesLiens)); }catch(e){} }
+    if(!orga && mesLiens.some(x => x.v !== 2)){ // téléphone de participant : ses liens viennent d'un autre organisateur, on les garde même s'il organise ensuite
+      mesLiens.forEach(x => { if(x.v !== 2){ x.own = false; x.v = 2; } }); try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(mesLiens)); }catch(e){} }
     let wantsOrga = false; try{ wantsOrga = localStorage.getItem("secretSanta.organise") === "1"; }catch(e){}
     if(!orga && !wantsOrga){ location.replace("#" + mesLiens[0].tok); location.reload(); return; } // simple participant : sa page s'ouvre directement
     // organisateur : un lien d'un de ses tirages n'est gardé que si ce tirage existe encore (sinon Secret Santa supprimé ou tirage refait)
-    if(orga) mesLiens = mesLiens.filter(x => { const v = decode(x.tok).vid, cur = v ? ownTok(v) : null; if(cur){ x.tok = cur; return true; } return x.own === false; });
+    if(orga) mesLiens = mesLiens.filter(x => { const v = decode(x.tok).vid, cur = v ? ownTok(v) : null; if(cur){ x.tok = cur; return true; } return x.own === false && x.v === 2 && !(v && mesVids().includes(v)); }); // sinon : lien d'un Secret Santa supprimé de cet appareil
     try{ localStorage.setItem("secretSanta.mesLiens", JSON.stringify(mesLiens)); }catch(e){}
   }
   if(mesLiens.length){
@@ -930,7 +935,7 @@
     mesLiens.forEach(x => { const v = decode(x.tok).vid; if(!v) return;
       fetch(API + "/souhaits?k=" + closedKey(v), {cache:"no-store"}).then(r => r.ok ? r.json() : {}).then(j => { if(!(j && j.texte === "supprime")) return;
         forgetLinks([v]);
-        const a = [...$("myPages").querySelectorAll("a")].find(el => el.getAttribute("href") === "#" + x.tok); if(a) a.remove();
+        const a = [...$("myPages").querySelectorAll("a")].find(el => el.getAttribute("href") === "#" + x.tok); if(a) a.remove(); mesLiens = mesLiens.filter(y => y !== x);
         if(!$("myPages").querySelector("a")) $("myPagesCard").classList.add("hidden");
       }).catch(()=>{}); });
   }
@@ -1117,7 +1122,7 @@
   function phoneOf(n){ const p = state.people.find(q => full(q) === n); return p ? p.phone : ""; }
   function tok(g, r, vid){
     if(!vid){ const t = (state.draw || []).find(x => x.name === g); vid = t && t.vid ? t.vid : ""; }
-    if(vid){ state.allVids = state.allVids || []; if(!state.allVids.includes(vid)) state.allVids.push(vid); } // tous les liens créés, pour pouvoir les bloquer si le Secret Santa est supprimé
+    if(vid){ state.allVids = state.allVids || []; if(!state.allVids.includes(vid)) state.allVids.push(vid); addMesVids([vid]); } // tous les liens créés, pour pouvoir les bloquer si le Secret Santa est supprimé
     const pin = pinOf(phoneOf(g)), age = ageOf(r);
     const gp = state.people.find(q => full(q) === g), first = gp ? (gp.name||"").trim() : "";
     if(pin) return encode(g, lock(r + "\u0001" + age, pin, g), state.budget, "", state.group, whenText(), "", vid, first);
@@ -1784,7 +1789,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.47"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.48"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
