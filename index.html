@@ -398,6 +398,7 @@
     <p id="ageLine" class="hidden" style="font-size:18px;font-weight:600;margin-top:0">🎂 <span id="ageVal"></span></p>
     <p id="budgetLine" class="hidden" style="font-size:18px;font-weight:600">💶 Budget maximum : <span id="budgetVal"></span> €</p>
     <p id="whenLine" class="hidden" style="font-size:17px;font-weight:600">📅 Remise des cadeaux : <span id="whenVal"></span></p>
+    <p id="calLine" class="hidden" style="margin-top:0"><a class="btn" id="calBtn" style="background:transparent;color:#ffe7a8;border:1px solid #ffe7a8;margin:0" target="_blank" rel="noopener">📅 Ajouter à mon agenda</a></p>
     <p id="countLine" class="hidden" style="font-size:18px;font-weight:700;color:#ffe7a8;margin-top:0"></p>
     <p id="secret" class="hidden">🤫 Garde le secret&nbsp;! Personne d'autre que toi ne connaît ce nom.</p>
     <div id="gotBox" class="wishBox hidden" style="margin-top:26px">
@@ -685,11 +686,32 @@
         jingle(); $("gift").classList.add("opening");
         setTimeout(confetti, 1000);
         setTimeout(reveal, 1350); }); };
+    // bouton « Ajouter à mon agenda » : journée (ou plage) de remise lue dans le texte de date du lien
+    const calendar = d => {
+      const M = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+      const ds = [...(d.when || "").matchAll(/(\d{1,2}) (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre) (\d{4})/g)].map(m => new Date(+m[3], M.indexOf(m[2]), +m[1]));
+      if(!ds.length) return;
+      const start = ds[0], end = new Date(ds[ds.length-1]); end.setDate(end.getDate() + 1); // fin exclue (journée entière)
+      const f = x => x.getFullYear() + String(x.getMonth()+1).padStart(2,"0") + String(x.getDate()).padStart(2,"0");
+      const title = "🎅 " + (d.group ? "Secret Santa " + d.group : "Secret Santa") + " : remise des cadeaux";
+      const desc = "Cadeau pour " + d.receiver + (d.budget ? " (budget maximum : " + d.budget + " €)" : "");
+      const btn = $("calBtn");
+      if(/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)){ // iPhone / Mac : fichier agenda, ouvert directement par Calendrier
+        const esc2 = t => t.replace(/[\\;,]/g, m => "\\" + m);
+        const ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Secret Santa//FR","BEGIN:VEVENT","UID:" + (d.vid || f(start)) + "@secret-santa",
+          "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g,"").slice(0,15) + "Z","DTSTART;VALUE=DATE:" + f(start),"DTEND;VALUE=DATE:" + f(end),
+          "SUMMARY:" + esc2(title),"DESCRIPTION:" + esc2(desc),"END:VEVENT","END:VCALENDAR"].join("\r\n");
+        btn.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics); btn.removeAttribute("target"); btn.setAttribute("download", "secret-santa.ics");
+      } else { // Android / ordinateur : Google Agenda
+        btn.href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(title) + "&dates=" + f(start) + "/" + f(end) + "&details=" + encodeURIComponent(desc);
+      }
+      $("calLine").classList.remove("hidden");
+    };
     const reveal = ()=>{ $("gift").classList.add("hidden"); markSeen(d.vid);
       $("target").classList.remove("hidden"); $("secret").classList.remove("hidden");
       if(d.budget){ $("budgetVal").textContent = d.budget; $("budgetLine").classList.remove("hidden"); }
       if(d.age){ $("ageVal").textContent = d.age + " an" + (+d.age > 1 ? "s" : ""); $("ageLine").classList.remove("hidden"); }
-      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); countdown(d.when); }
+      if(d.when){ $("whenVal").textContent = d.when; $("whenLine").classList.remove("hidden"); countdown(d.when); calendar(d); }
       wishes(); };
     const countdown = when => { // compte à rebours lu dans le texte de la date (« le … » ou « du … au … »)
       const M = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
@@ -1707,7 +1729,7 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.39"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.40"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
   // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
   const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
