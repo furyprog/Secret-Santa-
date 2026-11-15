@@ -1676,9 +1676,14 @@
 <script>
 // ---------- version et mise à jour automatique ----------
 (function(){
-  const APP_VERSION = "1.1.37"; // à changer à chaque publication, en même temps que VERSION dans sw.js
+  const APP_VERSION = "1.1.38"; // à changer à chaque publication, en même temps que VERSION dans sw.js
   document.querySelectorAll(".appVersion").forEach(e => e.textContent = "Version V" + APP_VERSION);
-  if(!("serviceWorker" in navigator)) return;
+  // page cadeau : on attend la vérification de version avant de l'afficher, pour qu'une mise à jour ne la recharge pas pendant la saisie du code
+  const rv = document.getElementById("reveal"), waitRv = rv && !rv.classList.contains("hidden");
+  if(waitRv) rv.style.visibility = "hidden";
+  const showRv = () => { if(waitRv) rv.style.visibility = ""; };
+  setTimeout(showRv, 4000); // au pire, la page s'affiche après 4 secondes
+  if(!("serviceWorker" in navigator)){ showRv(); return; }
   let reloading = false;
   const reload = () => { if(reloading) return; reloading = true; location.reload(); };
   const hadController = !!navigator.serviceWorker.controller;
@@ -1687,13 +1692,13 @@
     reg.update().catch(()=>{});
     return fetch("sw.js?v=" + Date.now(), {cache: "no-store"}).then(r => r.ok ? r.text() : "").then(t => {
       const m = t.match(/VERSION\s*=\s*"([^"]+)"/);
-      if(!m || m[1] === APP_VERSION) return;
+      if(!m || m[1] === APP_VERSION) return showRv();
       const k = "ss-maj-" + m[1];
-      if(sessionStorage.getItem(k)) return; // une seule tentative par version
+      if(sessionStorage.getItem(k)) return showRv(); // une seule tentative par version
       sessionStorage.setItem(k, "1");
       reg.update().catch(()=>{}).then(() => setTimeout(reload, 800));
-    });
-  }).catch(()=>{});
+    }).catch(showRv);
+  }).catch(showRv);
 })();
 </script>
 </body>
